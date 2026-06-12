@@ -85,3 +85,8 @@ function createMockUser(overrides?: Partial<User>): User {
 - 특정 provider만 교체할 때는 `overrideProvider` 활용
 - 통합 테스트에서 실제 DB 연결 시 테스트 전용 DB 사용
 - 해당 프로젝트는 공부용 이기 때문에 설명이 필요한 부분은 주석을 달 것.
+
+### git
+- 커밋 메시지
+  - 커밋 메시지는 기능에 대한 설명을 꼭 한글로
+  - 커밋 메시지 형식은 {기능}: [티켓번호] {커밋 설명}  
