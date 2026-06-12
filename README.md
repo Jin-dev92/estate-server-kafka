@@ -137,7 +137,7 @@
 |---|---|---|
 | **M0** ✅ | docker-compose(PG·Redis·Kafka) + Prisma 스키마 + Auth(JWT) | Prisma 기초·마이그레이션 |
 | **M1** ✅ | 건물/호실/입주 + 초대코드(Redis TTL) | Prisma 관계, Redis TTL |
-| **M2** | 게시판 CRUD + Redis 캐싱 | 캐시 무효화 패턴 |
+| **M2** ✅ | 게시판 CRUD + Redis 캐싱 | 캐시 무효화 패턴 |
 | **M3** | Kafka 도입 + audit-worker | producer/consumer 첫걸음 |
 | **M4** | 1:1 채팅 WS + Redis pub/sub + persistence-worker | WS+Redis+Kafka 통합 |
 | **M5** | notification-worker + WS 푸시 + 미읽음 카운트 | 다중 컨슈머 팬아웃 |
