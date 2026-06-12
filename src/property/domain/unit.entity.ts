@@ -1,3 +1,5 @@
+import { DomainError } from '../../common/errors/domain-error';
+
 interface UnitProps {
   id: string | null;
   buildingId: string;
@@ -13,8 +15,8 @@ export class Unit {
     name: string;
     floor: number;
   }): Unit {
-    if (!input.buildingId) throw new Error('buildingId is required');
-    if (!input.name) throw new Error('name is required');
+    if (!input.buildingId) throw new DomainError('건물 ID는 필수입니다.');
+    if (!input.name) throw new DomainError('호실 이름은 필수입니다.');
     return new Unit({
       id: null,
       buildingId: input.buildingId,

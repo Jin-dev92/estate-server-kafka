@@ -1,4 +1,5 @@
 import { Role } from './role.enum';
+import { DomainError } from '../../common/errors/domain-error';
 
 interface UserProps {
   id: string | null;
@@ -17,8 +18,8 @@ export class User {
     passwordHash: string;
     role?: Role;
   }): User {
-    if (!input.email) throw new Error('email is required');
-    if (!input.name) throw new Error('name is required');
+    if (!input.email) throw new DomainError('이메일은 필수입니다.');
+    if (!input.name) throw new DomainError('이름은 필수입니다.');
     return new User({
       id: null,
       email: input.email,
