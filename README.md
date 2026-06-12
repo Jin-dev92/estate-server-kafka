@@ -149,7 +149,45 @@
 
 ---
 
-## 7. 실행 방법
+## 7. API 레퍼런스
+
+> API가 추가·변경되면 이 표와 PR 본문을 함께 갱신합니다(CLAUDE.md "API 문서화" 규칙). 모든 보호 엔드포인트는 `Authorization: Bearer <accessToken>` 헤더가 필요합니다.
+
+### Auth (M0)
+
+| 메서드·경로 | 기능 | 인가 |
+|---|---|---|
+| `POST /auth/signup` | 회원가입(기본 역할 TENANT) | 공개 |
+| `POST /auth/login` | 로그인, JWT `accessToken` 발급 | 공개 |
+| `GET /auth/me` | 내 정보(id·email·role) 조회 | 인증 |
+
+### Property (M1)
+
+| 메서드·경로 | 기능 | 인가 |
+|---|---|---|
+| `POST /buildings` | 건물 생성 | OWNER |
+| `GET /buildings` | 내 건물 목록 | OWNER |
+| `POST /buildings/:buildingId/units` | 호실 생성 | OWNER(건물 소유자) |
+| `POST /units/:unitId/invite-codes` | 초대코드 발급(Redis TTL 24h) | OWNER(건물 소유자) |
+| `POST /invite-codes/redeem` | 초대코드 사용 → 입주(Lease 생성) | 인증 |
+| `GET /me/leases` | 내 입주(Lease) 목록 | 인증 |
+
+### Board (M2)
+
+| 메서드·경로 | 기능 | 인가 |
+|---|---|---|
+| `POST /buildings/:buildingId/posts` | 게시글 작성 | 건물 멤버 |
+| `GET /buildings/:buildingId/posts` | 게시글 목록(read-through 캐시) | 건물 멤버 |
+| `GET /posts/:postId` | 게시글 상세 + 댓글(캐시) | 건물 멤버 |
+| `PATCH /posts/:postId` | 게시글 수정 | 작성자 |
+| `DELETE /posts/:postId` | 게시글 삭제(204, 댓글 cascade) | 작성자 |
+| `POST /posts/:postId/comments` | 댓글 작성 | 건물 멤버 |
+
+> **건물 멤버** = 건물주이거나 그 건물 호실에 ACTIVE 입주(Lease)가 있는 사용자.
+
+---
+
+## 8. 실행 방법
 
 ```bash
 # 의존성 설치
@@ -166,7 +204,7 @@ $ npm run test:cov    # 커버리지
 
 ---
 
-## 8. 더 보기
+## 9. 더 보기
 
 - 📄 **[전체 설계 스펙 문서](docs/superpowers/specs/2026-06-11-building-owner-platform-design.md)** — 도메인 모델, 기능별 설계, Kafka 토픽/컨슈머, DDD 레이어 구조 등 **결정과 구조의 상세**가 정리되어 있습니다. (위 §5 설계 결정의 배경 문서)
 - 🗺️ **[M0 구현 계획](docs/superpowers/plans/2026-06-12-m0-foundation-auth.md)** — 전체 로드맵 + M0(인프라·Prisma·JWT 인증)의 TDD 단계별 계획.

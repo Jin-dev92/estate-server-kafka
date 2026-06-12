@@ -38,6 +38,19 @@ NestJS 기반 백엔드 서버.
 
 ---
 
+## API 문서화 (변경 시 필수)
+
+API(엔드포인트)가 추가·변경·삭제되면 **README와 PR 본문에 항상 다음을 명시**한다:
+
+- **HTTP 메서드 + 경로** (예: `POST /buildings/:buildingId/posts`)
+- **기능**: 이 엔드포인트가 무엇을 하는지 한 줄
+- **인가**: 인증/권한 요건(예: 인증 필요, OWNER 전용, 건물 멤버, 작성자)
+- 변경/삭제된 경우 무엇이 어떻게 바뀌었는지(요청·응답 형태 변화 포함)
+
+README에는 컨텍스트별 **API 표**를 유지하고, PR 본문에는 그 PR에서 **추가·변경된 엔드포인트만** 표로 정리한다.
+
+---
+
 ## NestJS Test Code Rules
 
 > 출처: iCloud `claude/docs/nestjs-test-rules.md`
