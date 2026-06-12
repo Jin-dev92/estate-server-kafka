@@ -84,3 +84,4 @@ function createMockUser(overrides?: Partial<User>): User {
 - Guard / Interceptor / Pipe 등 Cross-cutting concern은 별도 spec으로 분리
 - 특정 provider만 교체할 때는 `overrideProvider` 활용
 - 통합 테스트에서 실제 DB 연결 시 테스트 전용 DB 사용
+- 해당 프로젝트는 공부용 이기 때문에 설명이 필요한 부분은 주석을 달 것.
