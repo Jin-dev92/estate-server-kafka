@@ -1,4 +1,6 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { AppException } from '../../common/errors/app-exception';
+import { PropertyError } from '../property.errors';
 import { Lease } from '../domain/lease.entity';
 import { LEASE_REPOSITORY, LeaseRepository } from '../domain/lease.repository';
 import {
@@ -22,7 +24,7 @@ export class RedeemInviteCodeUseCase {
     const payload = await this.invites.redeem(input.code);
     if (!payload) {
       // 만료/이미 사용/존재하지 않음을 구분하지 않는다(코드 존재 여부 미누설)
-      throw new NotFoundException('invalid or expired invite code');
+      throw new AppException(PropertyError.INVALID_INVITE_CODE);
     }
     const lease = Lease.create({
       unitId: payload.unitId,

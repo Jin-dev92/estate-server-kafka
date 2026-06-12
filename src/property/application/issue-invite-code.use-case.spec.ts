@@ -1,4 +1,3 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { IssueInviteCodeUseCase } from './issue-invite-code.use-case';
 import { Building } from '../domain/building.entity';
 import { Unit } from '../domain/unit.entity';
@@ -85,7 +84,7 @@ describe('IssueInviteCodeUseCase', () => {
 
     await expect(
       useCase.execute({ ownerId: OWNER_ID, unitId: UNIT_ID }),
-    ).rejects.toThrow(ForbiddenException);
+    ).rejects.toMatchObject({ code: 'PROPERTY_NOT_BUILDING_OWNER' });
   });
 
   it('호실이 없으면 NotFoundException', async () => {
@@ -97,6 +96,6 @@ describe('IssueInviteCodeUseCase', () => {
 
     await expect(
       useCase.execute({ ownerId: OWNER_ID, unitId: 'nope' }),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toMatchObject({ code: 'PROPERTY_UNIT_NOT_FOUND' });
   });
 });

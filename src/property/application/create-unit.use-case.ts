@@ -1,9 +1,6 @@
-import {
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { AppException } from '../../common/errors/app-exception';
+import { PropertyError } from '../property.errors';
 import { Unit } from '../domain/unit.entity';
 import {
   BUILDING_REPOSITORY,
@@ -27,9 +24,9 @@ export class CreateUnitUseCase {
 
   async execute(input: CreateUnitInput): Promise<Unit> {
     const building = await this.buildings.findById(input.buildingId);
-    if (!building) throw new NotFoundException('building not found');
+    if (!building) throw new AppException(PropertyError.BUILDING_NOT_FOUND);
     if (!building.isOwnedBy(input.ownerId)) {
-      throw new ForbiddenException('not the building owner');
+      throw new AppException(PropertyError.NOT_BUILDING_OWNER);
     }
     const unit = Unit.create({
       buildingId: input.buildingId,
