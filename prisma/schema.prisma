@@ -21,4 +21,46 @@ model User {
   role         Role     @default(TENANT)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  buildings Building[]
+  leases    Lease[]
+}
+
+enum LeaseStatus {
+  ACTIVE
+  ENDED
+}
+
+model Building {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  name      String
+  address   String
+  createdAt DateTime @default(now())
+
+  units Unit[]
+}
+
+model Unit {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id])
+  name       String
+  floor      Int
+  createdAt  DateTime @default(now())
+
+  leases Lease[]
+}
+
+model Lease {
+  id        String      @id @default(cuid())
+  unitId    String
+  unit      Unit        @relation(fields: [unitId], references: [id])
+  tenantId  String
+  tenant    User        @relation(fields: [tenantId], references: [id])
+  status    LeaseStatus @default(ACTIVE)
+  startDate DateTime    @default(now())
+  endDate   DateTime?
+  createdAt DateTime    @default(now())
 }
