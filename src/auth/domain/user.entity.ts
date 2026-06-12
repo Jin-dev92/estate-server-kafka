@@ -11,7 +11,12 @@ interface UserProps {
 export class User {
   private constructor(private readonly props: UserProps) {}
 
-  static create(input: { email: string; name: string; passwordHash: string; role?: Role }): User {
+  static create(input: {
+    email: string;
+    name: string;
+    passwordHash: string;
+    role?: Role;
+  }): User {
     if (!input.email) throw new Error('email is required');
     if (!input.name) throw new Error('name is required');
     return new User({
@@ -27,9 +32,19 @@ export class User {
     return new User(props);
   }
 
-  get id(): string | null { return this.props.id; }
-  get email(): string { return this.props.email; }
-  get name(): string { return this.props.name; }
-  get role(): Role { return this.props.role; }
-  get passwordHash(): string { return this.props.passwordHash; }
+  get id(): string | null {
+    return this.props.id;
+  }
+  get email(): string {
+    return this.props.email;
+  }
+  get name(): string {
+    return this.props.name;
+  }
+  get role(): Role {
+    return this.props.role;
+  }
+  get passwordHash(): string {
+    return this.props.passwordHash;
+  }
 }

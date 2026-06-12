@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
+import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
@@ -10,9 +11,13 @@ describe('Auth (e2e)', () => {
   const email = `e2e_${Date.now()}@test.com`;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     prisma = app.get(PrismaService);
     await app.init();
   });
@@ -23,34 +28,44 @@ describe('Auth (e2e)', () => {
   });
 
   it('signup → login → me 전체 흐름', async () => {
-    await request(app.getHttpServer())
+    await request(app.getHttpServer() as App)
       .post('/auth/signup')
       .send({ email, name: '길동', password: 'pw123456' })
       .expect(201)
-      .expect((res) => expect(res.body.role).toBe('TENANT'));
+      .expect((res) =>
+        expect((res.body as { role: string }).role).toBe('TENANT'),
+      );
 
-    const login = await request(app.getHttpServer())
+    const login = await request(app.getHttpServer() as App)
       .post('/auth/login')
       .send({ email, password: 'pw123456' })
       .expect(201);
-    const token = login.body.accessToken;
+    const token = (login.body as { accessToken: string }).accessToken;
     expect(typeof token).toBe('string');
 
-    await request(app.getHttpServer())
+    await request(app.getHttpServer() as App)
       .get('/auth/me')
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
-      .expect((res) => expect(res.body.email).toBe(email));
+      .expect((res) =>
+        expect((res.body as { email: string }).email).toBe(email),
+      );
   });
 
   it('토큰 없이 /auth/me는 401', async () => {
-    await request(app.getHttpServer()).get('/auth/me').expect(401);
+    await request(app.getHttpServer() as App)
+      .get('/auth/me')
+      .expect(401);
   });
 
   it('짧은 비밀번호 signup은 400', async () => {
-    await request(app.getHttpServer())
+    await request(app.getHttpServer() as App)
       .post('/auth/signup')
-      .send({ email: `short_${Date.now()}@test.com`, name: 'x', password: 'short' })
+      .send({
+        email: `short_${Date.now()}@test.com`,
+        name: 'x',
+        password: 'short',
+      })
       .expect(400);
   });
 });

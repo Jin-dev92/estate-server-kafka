@@ -20,7 +20,11 @@ export class SignUpUseCase {
     const existing = await this.users.findByEmail(input.email);
     if (existing) throw new ConflictException('email already in use');
     const passwordHash = await this.hasher.hash(input.password);
-    const user = User.create({ email: input.email, name: input.name, passwordHash });
+    const user = User.create({
+      email: input.email,
+      name: input.name,
+      passwordHash,
+    });
     return this.users.save(user);
   }
 }
