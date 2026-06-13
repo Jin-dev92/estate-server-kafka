@@ -54,12 +54,16 @@ describe('Error handling (e2e)', () => {
       );
   });
 
-  it('토큰 없이 보호 엔드포인트 → 401 봉투', async () => {
+  it('토큰 없이 보호 엔드포인트 → 401 + COMMON_UNAUTHORIZED 봉투', async () => {
+    // JwtAuthGuard가 던지는 Nest 기본 UnauthorizedException(401)은
+    // deriveCode(401) → COMMON_UNAUTHORIZED 로 매핑된다. 이 매핑 회귀를 잡는다.
     await request(app.getHttpServer() as App)
       .get('/auth/me')
       .expect(401)
-      .expect((res) =>
-        expect((res.body as { statusCode: number }).statusCode).toBe(401),
-      );
+      .expect((res) => {
+        const body = res.body as { statusCode: number; code: string };
+        expect(body.statusCode).toBe(401);
+        expect(body.code).toBe('COMMON_UNAUTHORIZED');
+      });
   });
 });

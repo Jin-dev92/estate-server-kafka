@@ -85,7 +85,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = exception.getResponse();
     if (typeof response === 'string') return response;
     const message = (response as { message?: string | string[] }).message;
-    if (Array.isArray(message)) return message[0];
+    // ValidationPipe는 message를 배열로 준다. 빈 배열이면 message[0]이 undefined가
+    // 되어 string 계약이 깨지므로, 원본 예외 메시지로 폴백한다.
+    if (Array.isArray(message)) return message[0] ?? exception.message;
     return message ?? exception.message;
   }
 }
