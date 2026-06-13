@@ -1,4 +1,5 @@
 import { PostCategory } from './post-category.enum';
+import { DomainError } from '../../common/errors/domain-error';
 
 interface PostProps {
   id: string | null;
@@ -19,10 +20,10 @@ export class Post {
     title: string;
     content: string;
   }): Post {
-    if (!input.buildingId) throw new Error('buildingId is required');
-    if (!input.authorId) throw new Error('authorId is required');
-    if (!input.title) throw new Error('title is required');
-    if (!input.content) throw new Error('content is required');
+    if (!input.buildingId) throw new DomainError('건물 ID는 필수입니다.');
+    if (!input.authorId) throw new DomainError('작성자 ID는 필수입니다.');
+    if (!input.title) throw new DomainError('제목은 필수입니다.');
+    if (!input.content) throw new DomainError('본문은 필수입니다.');
     return new Post({
       id: null,
       buildingId: input.buildingId,
@@ -38,8 +39,8 @@ export class Post {
   }
 
   edit(input: { title: string; content: string }): Post {
-    if (!input.title) throw new Error('title is required');
-    if (!input.content) throw new Error('content is required');
+    if (!input.title) throw new DomainError('제목은 필수입니다.');
+    if (!input.content) throw new DomainError('본문은 필수입니다.');
     return new Post({
       ...this.props,
       title: input.title,

@@ -1,4 +1,3 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CreateUnitUseCase } from './create-unit.use-case';
 import { Building } from '../domain/building.entity';
 import { Unit } from '../domain/unit.entity';
@@ -67,7 +66,7 @@ describe('CreateUnitUseCase', () => {
         name: '101호',
         floor: 1,
       }),
-    ).rejects.toThrow(ForbiddenException);
+    ).rejects.toMatchObject({ code: 'PROPERTY_NOT_BUILDING_OWNER' });
   });
 
   it('건물이 없으면 NotFoundException', async () => {
@@ -80,6 +79,6 @@ describe('CreateUnitUseCase', () => {
         name: '101호',
         floor: 1,
       }),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toMatchObject({ code: 'PROPERTY_BUILDING_NOT_FOUND' });
   });
 });

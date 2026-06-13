@@ -1,3 +1,5 @@
+import { DomainError } from '../../common/errors/domain-error';
+
 interface CommentProps {
   id: string | null;
   postId: string;
@@ -13,9 +15,9 @@ export class Comment {
     authorId: string;
     content: string;
   }): Comment {
-    if (!input.postId) throw new Error('postId is required');
-    if (!input.authorId) throw new Error('authorId is required');
-    if (!input.content) throw new Error('content is required');
+    if (!input.postId) throw new DomainError('게시글 ID는 필수입니다.');
+    if (!input.authorId) throw new DomainError('작성자 ID는 필수입니다.');
+    if (!input.content) throw new DomainError('내용은 필수입니다.');
     return new Comment({
       id: null,
       postId: input.postId,

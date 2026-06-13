@@ -1,9 +1,6 @@
-import {
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { AppException } from '../../common/errors/app-exception';
+import { PropertyError } from '../property.errors';
 import {
   BUILDING_REPOSITORY,
   BuildingRepository,
@@ -30,10 +27,10 @@ export class IssueInviteCodeUseCase {
 
   async execute(input: IssueInviteCodeInput): Promise<IssuedInvite> {
     const unit = await this.units.findById(input.unitId);
-    if (!unit) throw new NotFoundException('unit not found');
+    if (!unit) throw new AppException(PropertyError.UNIT_NOT_FOUND);
     const building = await this.buildings.findById(unit.buildingId);
     if (!building || !building.isOwnedBy(input.ownerId)) {
-      throw new ForbiddenException('not the building owner');
+      throw new AppException(PropertyError.NOT_BUILDING_OWNER);
     }
     return this.invites.issue({ unitId: unit.id!, issuedBy: input.ownerId });
   }

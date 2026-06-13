@@ -1,5 +1,6 @@
 import { User } from './user.entity';
 import { Role } from './role.enum';
+import { DomainError } from '../../common/errors/domain-error';
 
 describe('User entity', () => {
   it('create()로 신규 유저를 만들면 기본 역할은 TENANT', () => {
@@ -16,6 +17,6 @@ describe('User entity', () => {
   it('이메일이 비면 생성 시 예외', () => {
     expect(() =>
       User.create({ email: '', name: '홍길동', passwordHash: 'h' }),
-    ).toThrow('email is required');
+    ).toThrow(DomainError);
   });
 });

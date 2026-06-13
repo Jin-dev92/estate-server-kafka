@@ -1,4 +1,5 @@
 import { Building } from './building.entity';
+import { DomainError } from '../../common/errors/domain-error';
 
 describe('Building entity', () => {
   it('create()로 만들면 id는 null, 소유자가 설정된다', () => {
@@ -17,6 +18,6 @@ describe('Building entity', () => {
   it('ownerId가 비면 예외', () => {
     expect(() =>
       Building.create({ ownerId: '', name: '래미안', address: '주소' }),
-    ).toThrow('ownerId is required');
+    ).toThrow(DomainError);
   });
 });

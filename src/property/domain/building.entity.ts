@@ -1,3 +1,5 @@
+import { DomainError } from '../../common/errors/domain-error';
+
 interface BuildingProps {
   id: string | null;
   ownerId: string;
@@ -13,8 +15,8 @@ export class Building {
     name: string;
     address: string;
   }): Building {
-    if (!input.ownerId) throw new Error('ownerId is required');
-    if (!input.name) throw new Error('name is required');
+    if (!input.ownerId) throw new DomainError('건물 소유자 ID는 필수입니다.');
+    if (!input.name) throw new DomainError('건물 이름은 필수입니다.');
     return new Building({
       id: null,
       ownerId: input.ownerId,

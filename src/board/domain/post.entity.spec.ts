@@ -1,5 +1,6 @@
 import { Post } from './post.entity';
 import { PostCategory } from './post-category.enum';
+import { DomainError } from '../../common/errors/domain-error';
 
 describe('Post entity', () => {
   it('create()로 만들면 id는 null, 기본 category는 FREE, 작성자가 설정된다', () => {
@@ -24,7 +25,7 @@ describe('Post entity', () => {
         title: '',
         content: '내용',
       }),
-    ).toThrow('title is required');
+    ).toThrow(DomainError);
   });
 
   it('edit()는 제목·본문이 바뀐 새 Post를 반환하고 id는 유지한다', () => {

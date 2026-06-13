@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import { RedeemInviteCodeUseCase } from './redeem-invite-code.use-case';
 import { Lease } from '../domain/lease.entity';
 import { LeaseStatus } from '../domain/lease-status.enum';
@@ -63,6 +62,6 @@ describe('RedeemInviteCodeUseCase', () => {
 
     await expect(
       useCase.execute({ tenantId: TENANT_ID, code: 'EXPIRED' }),
-    ).rejects.toThrow(NotFoundException);
+    ).rejects.toMatchObject({ code: 'PROPERTY_INVALID_INVITE_CODE' });
   });
 });
