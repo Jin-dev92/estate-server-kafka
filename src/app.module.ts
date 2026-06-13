@@ -8,6 +8,7 @@ import { PropertyModule } from './property/property.module';
 import { BoardModule } from './board/board.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { KafkaModule } from './events/kafka.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { KafkaModule } from './events/kafka.module';
     PropertyModule,
     BoardModule,
     KafkaModule,
+    AuditModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
 })
