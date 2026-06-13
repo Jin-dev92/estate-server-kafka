@@ -4,6 +4,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigKey } from '../config/config-keys';
 import { EVENT_PUBLISHER } from './event-publisher';
 import { KafkaEventPublisher, KAFKA_CLIENT } from './kafka-event.publisher';
+import { KafkaTopicInitializer } from './kafka-topic-initializer';
 
 // 전역 모듈: 어느 컨텍스트의 유스케이스든 EVENT_PUBLISHER를 주입받을 수 있다.
 @Global()
@@ -27,7 +28,10 @@ import { KafkaEventPublisher, KAFKA_CLIENT } from './kafka-event.publisher';
       },
     ]),
   ],
-  providers: [{ provide: EVENT_PUBLISHER, useClass: KafkaEventPublisher }],
+  providers: [
+    { provide: EVENT_PUBLISHER, useClass: KafkaEventPublisher },
+    KafkaTopicInitializer,
+  ],
   exports: [EVENT_PUBLISHER],
 })
 export class KafkaModule {}

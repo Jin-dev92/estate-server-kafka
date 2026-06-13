@@ -4,11 +4,17 @@ import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 import { ConfigKey } from './config/config-keys';
+import { KafkaTopicInitializer } from './events/kafka-topic-initializer';
 import { setupSwagger } from './common/swagger/setup-swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // consumer 시작 전에 토픽을 명시적으로 생성한다(B 방식, auto-create off).
+  // startAllMicroservices()보다 먼저 await해 audit-worker 구독 시점에
+  // 토픽이 반드시 존재하도록 보장한다(콜드스타트 race 제거).
+  await app.get(KafkaTopicInitializer).ensureTopics();
 
   // audit-worker(Kafka consumer)를 같은 프로세스에 띄운다(hybrid app).
   const config = app.get(ConfigService);
