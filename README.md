@@ -138,6 +138,7 @@
 | **M0** ✅ | docker-compose(PG·Redis·Kafka) + Prisma 스키마 + Auth(JWT) | Prisma 기초·마이그레이션 |
 | **M1** ✅ | 건물/호실/입주 + 초대코드(Redis TTL) | Prisma 관계, Redis TTL |
 | **M2** ✅ | 게시판 CRUD + Redis 캐싱 | 캐시 무효화 패턴 |
+| **M2.5** ✅ | 전역 에러 처리 + 커스텀 예외 + 일관 에러 봉투 | ExceptionFilter, 커스텀 예외 |
 | **M3** | Kafka 도입 + audit-worker | producer/consumer 첫걸음 |
 | **M4** | 1:1 채팅 WS + Redis pub/sub + persistence-worker | WS+Redis+Kafka 통합 |
 | **M5** | notification-worker + WS 푸시 + 미읽음 카운트 | 다중 컨슈머 팬아웃 |
@@ -184,6 +185,36 @@
 | `POST /posts/:postId/comments` | 댓글 작성 | 건물 멤버 |
 
 > **건물 멤버** = 건물주이거나 그 건물 호실에 ACTIVE 입주(Lease)가 있는 사용자.
+
+### 에러 응답 형식 (M2.5)
+
+모든 4xx/5xx 에러는 전역 ExceptionFilter가 아래 봉투로 통일해 내려줍니다. **FE는 메시지 문구 대신 안정적인 `code`로 분기**합니다.
+
+```json
+{
+  "statusCode": 404,
+  "code": "BOARD_POST_NOT_FOUND",
+  "message": "게시글을 찾을 수 없습니다.",
+  "path": "/posts/abc123",
+  "timestamp": "2026-06-12T08:00:00.000Z"
+}
+```
+
+| code | status | 의미 |
+|---|---|---|
+| `AUTH_EMAIL_IN_USE` | 409 | 이미 사용 중인 이메일 |
+| `AUTH_INVALID_CREDENTIALS` | 401 | 로그인 정보 불일치(이메일 존재 여부 미노출) |
+| `AUTH_INSUFFICIENT_ROLE` | 403 | 역할 권한 부족 |
+| `PROPERTY_BUILDING_NOT_FOUND` / `PROPERTY_UNIT_NOT_FOUND` | 404 | 건물·호실 없음 |
+| `PROPERTY_NOT_BUILDING_OWNER` | 403 | 건물 소유자 아님 |
+| `PROPERTY_INVALID_INVITE_CODE` | 404 | 유효하지 않거나 만료된 초대코드 |
+| `BOARD_POST_NOT_FOUND` | 404 | 게시글 없음 |
+| `BOARD_NOT_AUTHOR` | 403 | 글 작성자 아님 |
+| `BOARD_NOT_BUILDING_MEMBER` | 403 | 건물 멤버 아님 |
+| `COMMON_VALIDATION_FAILED` | 400 | 요청 검증 실패(DTO) |
+| `VALIDATION_FAILED` | 422 | 도메인 불변식 위반 |
+| `COMMON_UNAUTHORIZED` | 401 | 인증 필요/실패 |
+| `COMMON_INTERNAL_ERROR` | 500 | 서버 오류 |
 
 ---
 
