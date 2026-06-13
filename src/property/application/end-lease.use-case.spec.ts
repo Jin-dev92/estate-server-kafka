@@ -18,10 +18,26 @@ const BUILDING_ID = 'b1';
 function deps(opts: { lease?: Lease | null; ownerId?: string } = {}) {
   const lease =
     opts.lease === undefined
-      ? Lease.reconstitute({ id: LEASE_ID, unitId: UNIT_ID, tenantId: TENANT_ID, status: LeaseStatus.ACTIVE, endedAt: null })
+      ? Lease.reconstitute({
+          id: LEASE_ID,
+          unitId: UNIT_ID,
+          tenantId: TENANT_ID,
+          status: LeaseStatus.ACTIVE,
+          endedAt: null,
+        })
       : opts.lease;
-  const unit = Unit.reconstitute({ id: UNIT_ID, buildingId: BUILDING_ID, name: '101', floor: 1 });
-  const building = Building.reconstitute({ id: BUILDING_ID, ownerId: opts.ownerId ?? OWNER_ID, name: '빌딩', address: '주소' });
+  const unit = Unit.reconstitute({
+    id: UNIT_ID,
+    buildingId: BUILDING_ID,
+    name: '101',
+    floor: 1,
+  });
+  const building = Building.reconstitute({
+    id: BUILDING_ID,
+    ownerId: opts.ownerId ?? OWNER_ID,
+    name: '빌딩',
+    address: '주소',
+  });
 
   const updated: Lease[] = [];
   const leases: LeaseRepository = {
@@ -33,8 +49,13 @@ function deps(opts: { lease?: Lease | null; ownerId?: string } = {}) {
       return Promise.resolve(l);
     },
   };
-  const units: UnitRepository = { save: (u) => Promise.resolve(u), findById: () => Promise.resolve(unit) };
-  const buildings: Partial<BuildingRepository> = { findById: () => Promise.resolve(building) };
+  const units: UnitRepository = {
+    save: (u) => Promise.resolve(u),
+    findById: () => Promise.resolve(unit),
+  };
+  const buildings: Partial<BuildingRepository> = {
+    findById: () => Promise.resolve(building),
+  };
   const published: unknown[] = [];
   const events: EventPublisher = {
     publish: (e) => {
@@ -52,19 +73,35 @@ describe('EndLeaseUseCase', () => {
 
   it('건물 OWNER가 종료하면 update 후 LeaseEnded를 발행한다', async () => {
     const { leases, units, buildings, events, updated, published } = deps();
-    const useCase = new EndLeaseUseCase(leases, units, buildings as BuildingRepository, events);
+    const useCase = new EndLeaseUseCase(
+      leases,
+      units,
+      buildings as BuildingRepository,
+      events,
+    );
 
     await useCase.execute({ userId: OWNER_ID, leaseId: LEASE_ID });
 
     expect(updated[0].status).toBe(LeaseStatus.ENDED);
     expect(published).toEqual([
-      expect.objectContaining({ eventType: EventType.LeaseEnded, entityType: EntityType.Lease, entityId: LEASE_ID }),
+      expect.objectContaining({
+        eventType: EventType.LeaseEnded,
+        entityType: EntityType.Lease,
+        entityId: LEASE_ID,
+      }),
     ]);
   });
 
   it('OWNER가 아니면 NOT_BUILDING_OWNER로 거부하고 발행하지 않는다', async () => {
-    const { leases, units, buildings, events, published } = deps({ ownerId: 'someone-else' });
-    const useCase = new EndLeaseUseCase(leases, units, buildings as BuildingRepository, events);
+    const { leases, units, buildings, events, published } = deps({
+      ownerId: 'someone-else',
+    });
+    const useCase = new EndLeaseUseCase(
+      leases,
+      units,
+      buildings as BuildingRepository,
+      events,
+    );
 
     await expect(
       useCase.execute({ userId: OWNER_ID, leaseId: LEASE_ID }),
@@ -74,7 +111,12 @@ describe('EndLeaseUseCase', () => {
 
   it('없는 계약이면 LEASE_NOT_FOUND', async () => {
     const { leases, units, buildings, events } = deps({ lease: null });
-    const useCase = new EndLeaseUseCase(leases, units, buildings as BuildingRepository, events);
+    const useCase = new EndLeaseUseCase(
+      leases,
+      units,
+      buildings as BuildingRepository,
+      events,
+    );
 
     await expect(
       useCase.execute({ userId: OWNER_ID, leaseId: LEASE_ID }),

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -188,14 +196,29 @@ export class PropertyController {
   @ApiOperation({ summary: '계약 종료(건물 OWNER 전용)' })
   @ApiParam({ name: 'id', description: '계약(Lease) ID' })
   @ApiResponse({ status: 200, description: '종료된 계약' })
-  @ApiResponse({ status: 403, type: ErrorResponseDto, description: '건물 소유자 아님' })
-  @ApiResponse({ status: 404, type: ErrorResponseDto, description: '계약 없음' })
-  @ApiResponse({ status: 409, type: ErrorResponseDto, description: '이미 종료된 계약' })
+  @ApiResponse({
+    status: 403,
+    type: ErrorResponseDto,
+    description: '건물 소유자 아님',
+  })
+  @ApiResponse({
+    status: 404,
+    type: ErrorResponseDto,
+    description: '계약 없음',
+  })
+  @ApiResponse({
+    status: 409,
+    type: ErrorResponseDto,
+    description: '이미 종료된 계약',
+  })
   async endLeaseHandler(
     @CurrentUser() user: TokenPayload,
     @Param('id') id: string,
   ) {
-    const lease = await this.endLease.execute({ userId: user.sub, leaseId: id });
+    const lease = await this.endLease.execute({
+      userId: user.sub,
+      leaseId: id,
+    });
     return {
       id: lease.id,
       unitId: lease.unitId,

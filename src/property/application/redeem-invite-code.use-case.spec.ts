@@ -143,7 +143,7 @@ describe('RedeemInviteCodeUseCase', () => {
         entityType: EntityType.Lease,
         entityId: LEASE_ID_EVT,
         actorId: TENANT_ID_EVT,
-        payload: expect.objectContaining({ unitId: UNIT_ID_EVT }),
+        payload: expect.objectContaining({ unitId: UNIT_ID_EVT }) as object,
       }),
     ]);
   });

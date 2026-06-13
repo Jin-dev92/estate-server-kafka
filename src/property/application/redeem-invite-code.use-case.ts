@@ -8,10 +8,7 @@ import {
   INVITE_CODE_STORE,
   InviteCodeStore,
 } from '../domain/invite-code.store';
-import {
-  EVENT_PUBLISHER,
-  EventPublisher,
-} from '../../events/event-publisher';
+import { EVENT_PUBLISHER, EventPublisher } from '../../events/event-publisher';
 import { EntityType, EventType } from '../../events/event-type.enum';
 
 export interface RedeemInviteCodeInput {

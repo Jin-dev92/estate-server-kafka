@@ -23,14 +23,19 @@ describe('KafkaEventPublisher', () => {
 
   beforeEach(() => {
     // ClientKafka는 큰 타입이라 emit/connect만 mock하고 as unknown as 로 주입한다(테스트 한정).
-    client = { emit: jest.fn().mockReturnValue(of(undefined)), connect: jest.fn() };
+    client = {
+      emit: jest.fn().mockReturnValue(of(undefined)),
+      connect: jest.fn(),
+    };
     publisher = new KafkaEventPublisher(client as unknown as ClientKafka);
   });
 
   afterEach(() => jest.clearAllMocks());
 
   it('PostCreated/CommentCreated는 board-events 토픽에 entityId 키로 발행한다', async () => {
-    await publisher.publish(eventOf({ eventType: EventType.PostCreated, entityId: 'post1' }));
+    await publisher.publish(
+      eventOf({ eventType: EventType.PostCreated, entityId: 'post1' }),
+    );
 
     expect(client.emit).toHaveBeenCalledWith(KafkaTopic.BoardEvents, {
       key: 'post1',
@@ -39,19 +44,27 @@ describe('KafkaEventPublisher', () => {
   });
 
   it('TenantJoined/LeaseEnded는 membership-events 토픽에 발행한다', async () => {
-    await publisher.publish(eventOf({ eventType: EventType.LeaseEnded, entityType: EntityType.Lease, entityId: 'lease1' }));
+    await publisher.publish(
+      eventOf({
+        eventType: EventType.LeaseEnded,
+        entityType: EntityType.Lease,
+        entityId: 'lease1',
+      }),
+    );
 
     expect(client.emit).toHaveBeenCalledWith(KafkaTopic.MembershipEvents, {
       key: 'lease1',
-      value: eventOf({ eventType: EventType.LeaseEnded, entityType: EntityType.Lease, entityId: 'lease1' }),
+      value: eventOf({
+        eventType: EventType.LeaseEnded,
+        entityType: EntityType.Lease,
+        entityId: 'lease1',
+      }),
     });
   });
 
   it('발행이 실패해도 throw하지 않는다(after-commit 한계, 로깅만)', async () => {
     client.emit.mockReturnValue(throwError(() => new Error('broker down')));
 
-    await expect(
-      publisher.publish(eventOf()),
-    ).resolves.toBeUndefined();
+    await expect(publisher.publish(eventOf())).resolves.toBeUndefined();
   });
 });
