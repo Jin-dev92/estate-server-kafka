@@ -22,19 +22,26 @@ export class KafkaTopicInitializer {
     const admin = new Kafka({ brokers }).admin();
     await admin.connect();
     try {
-      // createTopics는 이미 존재하는 토픽은 건너뛰고 false를 반환한다(멱등).
-      const created = await admin.createTopics({
+      // 이미 존재하는 토픽을 createTopics에 넘기면 브로커가 에러를 내므로,
+      // 현재 토픽 목록과의 차집합(신규)만 생성한다(멱등 + 깔끔한 로그).
+      const existing = new Set(await admin.listTopics());
+      const toCreate = KAFKA_TOPIC_SPECS.filter(
+        (spec) => !existing.has(spec.topic),
+      );
+      if (toCreate.length === 0) {
+        this.logger.log('토픽이 모두 존재함(생성 건너뜀)');
+        return;
+      }
+      await admin.createTopics({
         waitForLeaders: true,
-        topics: KAFKA_TOPIC_SPECS.map((spec) => ({
+        topics: toCreate.map((spec) => ({
           topic: spec.topic,
           numPartitions: spec.numPartitions,
           replicationFactor: spec.replicationFactor,
         })),
       });
       this.logger.log(
-        created
-          ? `토픽 생성 완료: ${KAFKA_TOPIC_SPECS.map((s) => s.topic).join(', ')}`
-          : '토픽이 이미 존재함(생성 건너뜀)',
+        `토픽 생성 완료: ${toCreate.map((s) => s.topic).join(', ')}`,
       );
     } finally {
       await admin.disconnect();
