@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { AppException } from '../../common/errors/app-exception';
 import { PropertyError } from '../property.errors';
@@ -7,6 +8,8 @@ import {
   INVITE_CODE_STORE,
   InviteCodeStore,
 } from '../domain/invite-code.store';
+import { EVENT_PUBLISHER, EventPublisher } from '../../events/event-publisher';
+import { EntityType, EventType } from '../../events/event-type.enum';
 
 export interface RedeemInviteCodeInput {
   tenantId: string;
@@ -18,6 +21,7 @@ export class RedeemInviteCodeUseCase {
   constructor(
     @Inject(INVITE_CODE_STORE) private readonly invites: InviteCodeStore,
     @Inject(LEASE_REPOSITORY) private readonly leases: LeaseRepository,
+    @Inject(EVENT_PUBLISHER) private readonly events: EventPublisher,
   ) {}
 
   async execute(input: RedeemInviteCodeInput): Promise<Lease> {
@@ -30,6 +34,16 @@ export class RedeemInviteCodeUseCase {
       unitId: payload.unitId,
       tenantId: input.tenantId,
     });
-    return this.leases.save(lease);
+    const saved = await this.leases.save(lease);
+    await this.events.publish({
+      eventId: randomUUID(),
+      eventType: EventType.TenantJoined,
+      occurredAt: new Date().toISOString(),
+      actorId: input.tenantId,
+      entityType: EntityType.Lease,
+      entityId: saved.id!,
+      payload: { unitId: saved.unitId },
+    });
+    return saved;
   }
 }

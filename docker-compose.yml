@@ -36,6 +36,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # production 모사: 토픽 자동 생성 차단. 토픽은 앱 부팅 시 KafkaTopicInitializer가
+      # 명시적으로 생성한다(파티션 수·복제계수 제어 + 오타 토픽 난립 방지).
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       # KRaft 클러스터 식별자(임의 base64 UUID). 운영에선 `kafka-storage random-uuid`로 생성
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     healthcheck:

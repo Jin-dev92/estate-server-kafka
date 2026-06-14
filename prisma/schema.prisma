@@ -106,3 +106,18 @@ model Comment {
   createdAt DateTime @default(now())
   deletedAt DateTime?
 }
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  eventId    String   @unique // 멱등 키 — 중복 소비 시 재적재 방지
+  eventType  String
+  actorId    String?
+  entityType String
+  entityId   String
+  payload    Json
+  occurredAt DateTime // 발행 측 발생 시각
+  createdAt  DateTime @default(now()) // 소비 측 적재 시각
+
+  @@index([entityType, entityId])
+  @@index([eventType])
+}
