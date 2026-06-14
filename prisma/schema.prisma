@@ -121,3 +121,23 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([eventType])
 }
+
+model ChatRoom {
+  id         String    @id @default(cuid())
+  buildingId String
+  ownerId    String
+  tenantId   String
+  createdAt  DateTime  @default(now())
+  messages   Message[]
+  @@unique([buildingId, tenantId])
+}
+
+model Message {
+  id        String   @id // 앱이 생성한 messageId(uuid). PK 겸 멱등 키
+  roomId    String
+  room      ChatRoom @relation(fields: [roomId], references: [id])
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+  @@index([roomId, createdAt])
+}
