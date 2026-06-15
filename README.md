@@ -27,7 +27,7 @@
 | 구분 | 기술 | 이 프로젝트에서의 역할 |
 |---|---|---|
 | **언어/런타임** | TypeScript, Node.js | 타입 안전한 서버 개발 |
-| **프레임워크** | NestJS (Hybrid App) | HTTP API + WebSocket + Kafka 컨슈머를 한 프로세스로 |
+| **프레임워크** | NestJS | main(HTTP API + WebSocket + Kafka producer) + 컨슈머 워커 3종(독립 프로세스·consumer group, M5) |
 | **데이터베이스** | PostgreSQL | 단일 RDB. 관계형 모델링·트랜잭션 |
 | **ORM** | Prisma | 스키마·마이그레이션·타입 안전 쿼리 |
 | **캐시/실시간** | Redis | 캐시·pub/sub·TTL·원자적 카운터·rate limit |
@@ -74,22 +74,21 @@
 ## 4. 아키텍처 한눈에
 
 ```
-                ┌────────────── 단일 NestJS 하이브리드 앱 ──────────────┐
-   클라이언트 ──┤  HTTP API · WebSocket Gateway        Kafka 컨슈머 3종 │
-                │  (interface 레이어)                  persistence       │
-                │        │                             notification      │
-                │   application (유스케이스)            audit             │
-                │        │                                ▲              │
-                │     domain (순수 비즈니스 규칙)          │              │
-                │        │                                │ 도메인 이벤트 │
-                │  infrastructure ── Prisma ── PostgreSQL │              │
-                │        ├──────────── Redis (캐시·pub/sub)               │
-                │        └──────────── Kafka producer ────┘              │
-                └───────────────────────────────────────────────────────┘
+       ┌─────────── main 프로세스 (HTTP API · WS Gateway · Kafka producer) ───────────┐
+   ──┤  interface → application → domain → infrastructure(Prisma·Redis·Kafka producer) │
+       └───────────────────────────────────┬──────────────────────────────────────────┘
+                                            │ 도메인 이벤트 발행
+                          ┌─────────────────┼─────────────────┐  (토픽: chat/board/membership-events)
+                          ▼                 ▼                 ▼
+              persistence-worker   notification-worker     audit-worker     ← 독립 프로세스·독립 consumer group
+              (chat-events)        (chat+board-events)     (전체 구독)
+                  │                     │  └─ Redis pub/sub → main WS 푸시      │
+                  ▼                     ▼                                      ▼
+               Message              Notification + 미읽음 카운터(Redis)      AuditLog
 ```
 
 - **실시간 전달(Redis pub/sub)** 과 **영속화(Kafka 컨슈머)** 를 분리해, 사용자 체감 지연을 낮추면서 쓰기 스파이크를 비동기로 흡수합니다.
-- DDD로 컨텍스트가 이미 모듈 경계로 끊겨 있어, 추후 특정 컨슈머/컨텍스트만 별도 프로세스로 분리하기 쉽습니다.
+- **M5에서 컨슈머를 워커별 프로세스로 분리**했습니다. main은 HTTP+WS+producer만 담당하고, persistence·notification·audit이 **각자 독립 consumer group**으로 같은 이벤트를 한 번씩 소비하는 **진짜 팬아웃**을 이룹니다. 워커(별도 프로세스)의 알림 푸시는 Redis 채널로 main의 WS Gateway에 브리지됩니다.
 
 ---
 
@@ -144,7 +143,11 @@
 
 **11. M4 — 채팅: 실시간 전달(WS+Redis pub/sub)과 영속화(Kafka persistence-worker) 분리**
 - *근거:* WS Gateway(socket.io)가 메시지를 받아 Redis 단일 채널로 즉시 중계(멀티 인스턴스)하고 capped list에 캐시하며, Kafka `chat-events`를 쓰기 버퍼로 두어 persistence-worker가 비동기 단건 멱등 INSERT(`Message.id=messageId`)한다. DB를 기다리지 않아 체감 지연이 낮다. 순서는 `roomId`를 파티션 키로 보장한다.
-- *트레이드오프:* "전달은 됐는데 DB엔 아직" 윈도우(→M6 Outbox), 단일 pub/sub 채널은 트래픽 증가 시 방별 샤딩이 후속 과제. 현재는 단일 hybrid 프로세스의 한 consumer group이 토픽별 핸들러로 소비하며, 같은 이벤트를 여러 그룹이 받는 본격 팬아웃은 **M5**에서 도입한다.
+- *트레이드오프:* "전달은 됐는데 DB엔 아직" 윈도우(→M6 Outbox), 단일 pub/sub 채널은 트래픽 증가 시 방별 샤딩이 후속 과제. M4 시점엔 단일 hybrid 프로세스의 한 consumer group이 토픽별 핸들러로 소비했고, 같은 이벤트를 여러 그룹이 받는 본격 팬아웃은 **M5(결정 12)** 에서 도입했다.
+
+**12. M5 — 워커별 엔트리포인트로 컨슈머 그룹 분리 + notification-worker**
+- *근거:* 이벤트 1건을 persistence·notification·audit이 **독립 consumer group**으로 각각 한 번씩 소비하는 팬아웃이 핵심 학습 목표(결정 6)다. NestJS hybrid는 `@EventPattern` 핸들러가 연결된 모든 마이크로서비스에 전역 등록되어 그룹별 분리가 어렵다 → main은 HTTP+WS+producer만 남기고, persistence/audit/notification을 **각각 별도 부트스트랩**(`src/workers/*.main.ts`, `NestFactory.create` 후 `listen()` 없이 `connectMicroservice`)으로 띄워 그룹·핸들러를 깔끔히 분리한다. notification-worker는 `MessageSent`·`CommentCreated`·`PostCreated`를 받아 수신자별 `Notification`을 멱등 적재(`@@unique[eventId,recipientId]`)하고, Redis 원자적 카운터로 미읽음을 관리하며, 접속 중 수신자에겐 Redis 채널 → main의 `/notifications` WS Gateway로 푸시한다.
+- *트레이드오프:* 프로세스가 4개(main + 워커 3)로 늘어 기동·관찰 비용이 증가하지만, 실제 배포 단위(워커=독립 배포·스케일)와 1:1로 맞아 현업 전이성이 높다. 푸시는 best-effort(적재·카운터가 진실 원천), 1:N(`PostCreated`) 알림은 동기 생성이라 대량 건물은 배치/비동기화가 후속 과제. dual-write 유실은 여전히 **M6 Outbox** 대상이다.
 
 ---
 
@@ -159,7 +162,7 @@
 | **M2.6** ✅ | Swagger(OpenAPI) 연동 + 기존 엔드포인트 문서화 | @nestjs/swagger, enum 명명 스키마 |
 | **M3** ✅ | Kafka 도입 + audit-worker | producer/consumer 첫걸음 |
 | **M4** ✅ | 1:1 채팅 WS + Redis pub/sub + persistence-worker | WS+Redis+Kafka 통합 |
-| **M5** | notification-worker + WS 푸시 + 미읽음 카운트 | 다중 컨슈머 팬아웃 |
+| **M5** ✅ | notification-worker + WS 푸시 + 미읽음 카운트 (워커별 컨슈머 그룹 분리) | 다중 컨슈머 팬아웃 |
 | **M6** | rate limit · 보안 점검 · (선택) Outbox | 운영·보안 |
 | **F1** *(추후)* | OAuth 소셜 로그인 | 외부 인증 연동 |
 | **F2** *(추후)* | 채팅 메시지 자동 번역(외국인 입주자 대응) | 외부 API 어댑터·i18n |
@@ -218,6 +221,17 @@
 
 > 메시지 전송은 Redis pub/sub로 즉시 중계되고, Kafka `chat-events`를 거쳐 persistence-worker가 비동기로 DB에 적재합니다(설계 §4 파이프라인).
 
+### Notification (M5)
+
+| 메서드·경로 | 기능 | 인가 |
+|---|---|---|
+| `GET /notifications` | 내 알림 목록(최신순, `?limit=` 기본 50·최대 100) | 인증(본인) |
+| `GET /notifications/unread-count` | 미읽음 수(Redis 원자적 카운터) | 인증(본인) |
+| `PATCH /notifications/read` | 전체 읽음 처리 + 카운터 리셋 | 인증(본인) |
+| WS `/notifications` (`notification` 이벤트) | 실시간 알림 푸시(socket.io 네임스페이스, 핸드셰이크 `auth.token` JWT) | 본인(연결 시 `user:{userId}` 룸 자동 join) |
+
+> notification-worker가 `MessageSent`·`CommentCreated`·`PostCreated`를 독립 consumer group으로 받아 수신자별 `Notification`을 멱등 적재(`@@unique[eventId,recipientId]`)하고, 미읽음 카운터를 INCR하며, 접속 중 수신자에겐 Redis 채널 → main `/notifications` WS로 푸시합니다. 수신자 해석: 채팅=방 상대방, 댓글=글 작성자, 게시글=건물 멤버(작성자/발신자 제외).
+
 ### 에러 응답 형식 (M2.5)
 
 모든 4xx/5xx 에러는 전역 ExceptionFilter가 아래 봉투로 통일해 내려줍니다. **FE는 메시지 문구 대신 안정적인 `code`로 분기**합니다.
@@ -253,17 +267,30 @@
 ## 8. 실행 방법
 
 ```bash
-# 의존성 설치
-$ npm install
+# 인프라(PostgreSQL·Redis·Kafka) 기동
+$ docker compose up -d
 
-# 개발 모드 (watch)
+# 의존성 설치 + 마이그레이션
+$ npm install
+$ npx prisma migrate deploy
+
+# main 프로세스 (HTTP API + WebSocket + Kafka producer)
 $ npm run start:dev
+
+# Kafka 컨슈머 워커 3종 — 각각 별도 터미널/프로세스에서 실행(독립 consumer group)
+$ npm run start:worker:persistence    # chat-events → Message 적재
+$ npm run start:worker:notification   # chat+board-events → Notification + WS 푸시
+$ npm run start:worker:audit          # 전체 구독 → AuditLog
+
+# 운영 빌드 후에는 start:prod / start:prod:persistence|notification|audit 사용
 
 # 테스트
 $ npm run test        # 단위 테스트
 $ npm run test:e2e    # e2e 테스트
 $ npm run test:cov    # 커버리지
 ```
+
+> **M5 이후 프로세스 구성:** main(HTTP+WS+producer) 1개 + 컨슈머 워커 3개. 워커는 같은 코드베이스를 다른 엔트리포인트로 띄운 별도 프로세스이며 각자 독립 consumer group으로 같은 이벤트를 한 번씩 소비합니다. 현재 main에는 비활성 `ChatPersistenceController`(microservice 미연결)가 남아 있으나 영속화는 persistence-worker가 담당합니다(후속 정리 대상).
 
 ---
 
