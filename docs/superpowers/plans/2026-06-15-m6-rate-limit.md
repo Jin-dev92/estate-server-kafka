@@ -53,12 +53,7 @@ docs/study/마일스톤-학습-노트.md            rate limit 학습 포인트(
 
 `src/config/config-keys.ts`의 `KafkaBrokers` 아래에 추가:
 
-```ts
-  KafkaBrokers = 'KAFKA_BROKERS',
-  RateLimitWindowSec = 'RATE_LIMIT_WINDOW_SEC',
-  RateLimitUserMax = 'RATE_LIMIT_USER_MAX',
-  RateLimitIpMax = 'RATE_LIMIT_IP_MAX',
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 2: .env.example에 추가**
 
@@ -96,82 +91,19 @@ git commit -m "[M6]chore: rate limit 설정 키(ConfigKey·.env.example) 추가"
 
 `src/common/rate-limit/rate-limit.constants.ts`:
 
-```ts
-// rate limit 전역 상수. 매직스트링/매직넘버 금지 — 데코레이터·가드·스토어가 단일 출처로 참조.
-
-// SetMetadata 키
-export const RATE_LIMIT_OPTIONS = 'rate_limit:options';
-export const RATE_LIMIT_SKIP = 'rate_limit:skip';
-
-// 라우트별 한도 오버라이드 옵션
-export interface RateLimitOptions {
-  userMax?: number;
-  ipMax?: number;
-  windowSec?: number;
-}
-
-// 기본 한도(설계 §5). 환경변수가 없을 때의 폴백.
-export const DEFAULT_WINDOW_SEC = 60;
-export const DEFAULT_USER_MAX = 60;
-export const DEFAULT_IP_MAX = 120;
-
-// 기본 적용 대상(쓰기 메서드). GET 등 읽기는 기본 제외.
-export const WRITE_METHODS: readonly string[] = ['POST', 'PATCH', 'PUT', 'DELETE'];
-
-// 고정 윈도우: INCR 후 윈도우 최초(c==1)에만 EXPIRE를 건다.
-// INCR·EXPIRE를 한 스크립트로 묶어 "INCR 후 EXPIRE 직전 크래시 → TTL 없는 영구 키" race를 막는다.
-export const FIXED_WINDOW_LUA = `
-local c = redis.call('INCR', KEYS[1])
-if c == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
-return c
-`;
-
-// 키: ratelimit:{scope}:{id}:{windowStart}
-export function rateLimitKey(
-  scope: 'user' | 'ip',
-  id: string,
-  windowStart: number,
-): string {
-  return `ratelimit:${scope}:${id}:${windowStart}`;
-}
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 2: 에러 스펙**
 
 `src/common/rate-limit/rate-limit.errors.ts`:
 
-```ts
-import { HttpStatus } from '@nestjs/common';
-import { AppErrorSpec } from '../errors/app-exception';
-
-export const RateLimitError = {
-  EXCEEDED: {
-    code: 'RATE_LIMIT_EXCEEDED',
-    status: HttpStatus.TOO_MANY_REQUESTS,
-    message: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
-  },
-} as const satisfies Record<string, AppErrorSpec>;
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 3: 데코레이터**
 
 `src/common/rate-limit/rate-limit.decorator.ts`:
 
-```ts
-import { SetMetadata } from '@nestjs/common';
-import {
-  RATE_LIMIT_OPTIONS,
-  RATE_LIMIT_SKIP,
-  RateLimitOptions,
-} from './rate-limit.constants';
-
-// 라우트별 한도 오버라이드. 예: @RateLimit({ ipMax: 10 })
-export const RateLimit = (options: RateLimitOptions) =>
-  SetMetadata(RATE_LIMIT_OPTIONS, options);
-
-// 해당 라우트는 rate limit에서 제외.
-export const SkipRateLimit = () => SetMetadata(RATE_LIMIT_SKIP, true);
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 4: 타입 확인 + 커밋**
 
@@ -195,27 +127,7 @@ git commit -m "[M6]feat: rate limit 상수·에러 스펙·데코레이터"
 
 `src/common/rate-limit/rate-limit.store.spec.ts`:
 
-```ts
-import { RedisRateLimitStore } from './rate-limit.store';
-import { RedisService } from '../../redis/redis.service';
-import { FIXED_WINDOW_LUA } from './rate-limit.constants';
-
-describe('RedisRateLimitStore', () => {
-  it('hit는 고정윈도우 Lua를 key·windowSec로 실행하고 카운트를 반환한다', async () => {
-    const redis = { runScript: jest.fn().mockResolvedValue(3) };
-    const store = new RedisRateLimitStore(redis as unknown as RedisService);
-
-    const count = await store.hit('ratelimit:ip:1.1.1.1:100', 60);
-
-    expect(count).toBe(3);
-    expect(redis.runScript).toHaveBeenCalledWith(
-      FIXED_WINDOW_LUA,
-      ['ratelimit:ip:1.1.1.1:100'],
-      [60],
-    );
-  });
-});
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 2: 실패 확인**
 
@@ -226,27 +138,7 @@ Expected: FAIL (모듈 없음)
 
 `src/common/rate-limit/rate-limit.store.ts`:
 
-```ts
-import { Injectable } from '@nestjs/common';
-import { RedisService } from '../../redis/redis.service';
-import { FIXED_WINDOW_LUA } from './rate-limit.constants';
-
-export const RATE_LIMIT_STORE = Symbol('RATE_LIMIT_STORE');
-
-export interface RateLimitStore {
-  // 키를 1 증가시키고(윈도우 최초면 TTL 설정) 현재 카운트를 반환한다(원자적).
-  hit(key: string, windowSec: number): Promise<number>;
-}
-
-@Injectable()
-export class RedisRateLimitStore implements RateLimitStore {
-  constructor(private readonly redis: RedisService) {}
-
-  hit(key: string, windowSec: number): Promise<number> {
-    return this.redis.runScript<number>(FIXED_WINDOW_LUA, [key], [windowSec]);
-  }
-}
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 4: 통과 확인**
 
@@ -274,168 +166,7 @@ git commit -m "[M6]feat: RedisRateLimitStore(고정윈도우 INCR+EXPIRE Lua)"
 
 `src/common/rate-limit/rate-limit.guard.spec.ts`:
 
-```ts
-import { ExecutionContext } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { RateLimitGuard } from './rate-limit.guard';
-import { RateLimitStore } from './rate-limit.store';
-import {
-  RATE_LIMIT_OPTIONS,
-  RATE_LIMIT_SKIP,
-  RateLimitOptions,
-} from './rate-limit.constants';
-import { ConfigKey } from '../../config/config-keys';
-
-const SECRET = 'test-secret';
-
-// 메타데이터(스킵/옵션)를 키로 돌려주는 Reflector 스텁.
-function reflector(meta: {
-  skip?: boolean;
-  options?: RateLimitOptions;
-}): Reflector {
-  return {
-    getAllAndOverride: jest.fn((key: string) =>
-      key === RATE_LIMIT_SKIP ? meta.skip : meta.options,
-    ),
-  } as unknown as Reflector;
-}
-
-// 환경변수(한도) + JWT 시크릿을 돌려주는 ConfigService 스텁.
-function config(): ConfigService {
-  const map: Record<string, string> = {
-    [ConfigKey.JwtSecret]: SECRET,
-    [ConfigKey.RateLimitWindowSec]: '60',
-    [ConfigKey.RateLimitUserMax]: '60',
-    [ConfigKey.RateLimitIpMax]: '120',
-  };
-  return {
-    get: (k: string) => map[k],
-    getOrThrow: (k: string) => map[k],
-  } as unknown as ConfigService;
-}
-
-function context(
-  method: string,
-  headers: Record<string, string> = {},
-  ip = '1.1.1.1',
-): { ctx: ExecutionContext; setHeader: jest.Mock } {
-  const setHeader = jest.fn();
-  const req = { method, headers, ip };
-  const res = { setHeader };
-  const ctx = {
-    switchToHttp: () => ({ getRequest: () => req, getResponse: () => res }),
-    getHandler: () => () => undefined,
-    getClass: () => class {},
-  } as unknown as ExecutionContext;
-  return { ctx, setHeader };
-}
-
-function makeGuard(
-  store: Partial<RateLimitStore>,
-  meta: { skip?: boolean; options?: RateLimitOptions } = {},
-) {
-  const jwt = new JwtService({ secret: SECRET });
-  return {
-    guard: new RateLimitGuard(
-      reflector(meta),
-      config(),
-      jwt,
-      store as RateLimitStore,
-    ),
-    jwt,
-  };
-}
-
-describe('RateLimitGuard', () => {
-  it('GET(읽기)은 통과하고 store를 호출하지 않는다', async () => {
-    const hit = jest.fn();
-    const { guard } = makeGuard({ hit });
-    const { ctx } = context('GET');
-
-    await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(hit).not.toHaveBeenCalled();
-  });
-
-  it('@SkipRateLimit이면 쓰기여도 통과한다', async () => {
-    const hit = jest.fn();
-    const { guard } = makeGuard({ hit }, { skip: true });
-    const { ctx } = context('POST');
-
-    await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(hit).not.toHaveBeenCalled();
-  });
-
-  it('쓰기는 IP 카운트를 검사하고 한도 내면 통과한다(미인증=IP only)', async () => {
-    const hit = jest.fn().mockResolvedValue(1);
-    const { guard } = makeGuard({ hit });
-    const { ctx } = context('POST');
-
-    await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(hit).toHaveBeenCalledTimes(1);
-    expect(hit.mock.calls[0][0]).toContain('ratelimit:ip:1.1.1.1:');
-  });
-
-  it('IP 한도 초과면 429(RATE_LIMIT_EXCEEDED) + Retry-After 설정', async () => {
-    const hit = jest.fn().mockResolvedValue(121); // ipMax 120 초과
-    const { guard } = makeGuard({ hit });
-    const { ctx, setHeader } = context('POST');
-
-    await expect(guard.canActivate(ctx)).rejects.toMatchObject({
-      code: 'RATE_LIMIT_EXCEEDED',
-    });
-    expect(setHeader).toHaveBeenCalledWith('Retry-After', expect.any(String));
-  });
-
-  it('@RateLimit({ ipMax: 10 }) 오버라이드 — 11이면 초과', async () => {
-    const hit = jest.fn().mockResolvedValue(11);
-    const { guard } = makeGuard({ hit }, { options: { ipMax: 10 } });
-    const { ctx } = context('POST');
-
-    await expect(guard.canActivate(ctx)).rejects.toMatchObject({
-      code: 'RATE_LIMIT_EXCEEDED',
-    });
-  });
-
-  it('유효 토큰이면 user 키도 검사한다(IP+user 2회)', async () => {
-    const hit = jest.fn().mockResolvedValue(1);
-    const { guard, jwt } = makeGuard({ hit });
-    const token = jwt.sign({ sub: 'u1' });
-    const { ctx } = context('POST', { authorization: `Bearer ${token}` });
-
-    await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(hit).toHaveBeenCalledTimes(2);
-    const keys = hit.mock.calls.map((c) => c[0] as string);
-    expect(keys.some((k) => k.includes('ratelimit:user:u1:'))).toBe(true);
-    expect(keys.some((k) => k.includes('ratelimit:ip:'))).toBe(true);
-  });
-
-  it('무효 토큰이면 거부하지 않고 IP only로 진행한다', async () => {
-    const hit = jest.fn().mockResolvedValue(1);
-    const { guard } = makeGuard({ hit });
-    const { ctx } = context('POST', { authorization: 'Bearer bad.token' });
-
-    await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(hit).toHaveBeenCalledTimes(1);
-  });
-
-  it('user 한도만 초과해도 429(이중 제한)', async () => {
-    // 호출 순서: ip(통과) → user(초과). ip는 1, user는 61 반환.
-    const hit = jest
-      .fn()
-      .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce(61);
-    const { guard, jwt } = makeGuard({ hit });
-    const token = jwt.sign({ sub: 'u1' });
-    const { ctx } = context('POST', { authorization: `Bearer ${token}` });
-
-    await expect(guard.canActivate(ctx)).rejects.toMatchObject({
-      code: 'RATE_LIMIT_EXCEEDED',
-    });
-  });
-});
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 2: 실패 확인**
 
@@ -446,116 +177,7 @@ Expected: FAIL (모듈 없음)
 
 `src/common/rate-limit/rate-limit.guard.ts`:
 
-```ts
-import {
-  CanActivate,
-  ExecutionContext,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { Request, Response } from 'express';
-import { ConfigKey } from '../../config/config-keys';
-import { TokenPayload } from '../../auth/domain/token-issuer';
-import { AppException } from '../errors/app-exception';
-import { RateLimitError } from './rate-limit.errors';
-import { RATE_LIMIT_STORE, RateLimitStore } from './rate-limit.store';
-import {
-  DEFAULT_IP_MAX,
-  DEFAULT_USER_MAX,
-  DEFAULT_WINDOW_SEC,
-  RATE_LIMIT_OPTIONS,
-  RATE_LIMIT_SKIP,
-  RateLimitOptions,
-  WRITE_METHODS,
-  rateLimitKey,
-} from './rate-limit.constants';
-
-// 스팸 요청은 사용량 과금·부하로 이어질 수 있으므로(CLAUDE.md 보안 원칙) 백엔드에서
-// userId+IP 이중으로 제한한다. 전역 가드라 쓰기 메서드(또는 @RateLimit 지정)에만 작동.
-@Injectable()
-export class RateLimitGuard implements CanActivate {
-  constructor(
-    private readonly reflector: Reflector,
-    private readonly config: ConfigService,
-    private readonly jwt: JwtService,
-    @Inject(RATE_LIMIT_STORE) private readonly store: RateLimitStore,
-  ) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const targets = [context.getHandler(), context.getClass()];
-
-    // 1. @SkipRateLimit → 통과
-    if (this.reflector.getAllAndOverride<boolean>(RATE_LIMIT_SKIP, targets)) {
-      return true;
-    }
-
-    // 2. @RateLimit(opts) 오버라이드 / 없으면 쓰기 메서드만 기본 적용
-    const override = this.reflector.getAllAndOverride<RateLimitOptions>(
-      RATE_LIMIT_OPTIONS,
-      targets,
-    );
-    const req = context.switchToHttp().getRequest<Request>();
-    const isWrite = WRITE_METHODS.includes(req.method);
-    if (!override && !isWrite) return true; // GET 등 읽기 통과
-
-    const windowSec =
-      override?.windowSec ??
-      this.intConfig(ConfigKey.RateLimitWindowSec, DEFAULT_WINDOW_SEC);
-    const userMax =
-      override?.userMax ??
-      this.intConfig(ConfigKey.RateLimitUserMax, DEFAULT_USER_MAX);
-    const ipMax =
-      override?.ipMax ??
-      this.intConfig(ConfigKey.RateLimitIpMax, DEFAULT_IP_MAX);
-    const windowStart = Math.floor(Date.now() / 1000 / windowSec);
-
-    // 3. IP는 항상, userId는 best-effort(토큰 검증 실패해도 거부하지 않음 → IP only)
-    const ip = req.ip ?? 'unknown';
-    const userId = this.extractUserId(req);
-
-    const checks: Array<{ key: string; max: number }> = [
-      { key: rateLimitKey('ip', ip, windowStart), max: ipMax },
-    ];
-    if (userId) {
-      checks.push({ key: rateLimitKey('user', userId, windowStart), max: userMax });
-    }
-
-    for (const { key, max } of checks) {
-      const count = await this.store.hit(key, windowSec);
-      if (count > max) {
-        const res = context.switchToHttp().getResponse<Response>();
-        const retryAfter = windowSec - (Math.floor(Date.now() / 1000) % windowSec);
-        res.setHeader('Retry-After', String(retryAfter));
-        throw new AppException(RateLimitError.EXCEEDED);
-      }
-    }
-    return true;
-  }
-
-  // 토큰을 best-effort로 검증해 sub만 얻는다(실패 시 null → IP only). 실제 인증 거부는 JwtAuthGuard 책임.
-  private extractUserId(req: Request): string | null {
-    const auth = req.headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return null;
-    try {
-      const payload = this.jwt.verify<TokenPayload>(auth.slice(7), {
-        secret: this.config.getOrThrow<string>(ConfigKey.JwtSecret),
-      });
-      return payload.sub;
-    } catch {
-      return null;
-    }
-  }
-
-  // env 정수 읽기(미설정/비정상 → 폴백).
-  private intConfig(key: ConfigKey, fallback: number): number {
-    const v = Number(this.config.get<string>(key));
-    return Number.isFinite(v) && v > 0 ? v : fallback;
-  }
-}
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 4: 통과 확인**
 
@@ -585,42 +207,13 @@ git commit -m "[M6]feat: RateLimitGuard(쓰기 기본·데코레이터 오버라
 
 `src/common/rate-limit/rate-limit.module.ts`:
 
-```ts
-import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigKey } from '../../config/config-keys';
-import { RATE_LIMIT_STORE, RedisRateLimitStore } from './rate-limit.store';
-import { RateLimitGuard } from './rate-limit.guard';
-
-// 전역 가드로 등록. RedisModule·ConfigModule은 전역, JwtModule은 여기서 구성(토큰 best-effort 검증용).
-@Module({
-  imports: [
-    ConfigModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.getOrThrow<string>(ConfigKey.JwtSecret),
-      }),
-    }),
-  ],
-  providers: [
-    { provide: RATE_LIMIT_STORE, useClass: RedisRateLimitStore },
-    { provide: APP_GUARD, useClass: RateLimitGuard },
-  ],
-})
-export class RateLimitModule {}
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 2: AppModule에 임포트**
 
 `src/app.module.ts`의 import 목록과 `imports` 배열에 추가:
 
-```ts
-import { RateLimitModule } from './common/rate-limit/rate-limit.module';
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 그리고 `imports: [...]` 배열 끝(`NotificationModule` 다음)에 `RateLimitModule,` 추가.
 
 - [ ] **Step 3: auth signup·login에 @RateLimit**
@@ -629,16 +222,8 @@ import { RateLimitModule } from './common/rate-limit/rate-limit.module';
 - import 추가: `import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';`
 - `@Post('signup')` 라우트와 `@Post('login')` 라우트 각각에 데코레이터 추가:
 
-```ts
-  @Post('signup')
-  @RateLimit({ ipMax: 10 })
-  @ApiOperation({ summary: '회원가입' })
-```
-```ts
-  @Post('login')
-  @RateLimit({ ipMax: 10 })
-  @ApiOperation({ summary: '로그인(JWT 발급)' })
-```
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
+> _(구현 코드는 PR diff·소스 파일 참조 — 계획 확정 후 코드 블록 제거)_
 
 - [ ] **Step 4: 빌드 + 전체 테스트**
 
