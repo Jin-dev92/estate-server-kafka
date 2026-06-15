@@ -141,3 +141,21 @@ model Message {
   createdAt DateTime @default(now())
   @@index([roomId, createdAt])
 }
+
+model Notification {
+  id          String    @id @default(cuid())
+  recipientId String
+  type        String // NotificationType 값
+  title       String
+  body        String?
+  entityType  String // EntityType 값(Post/Comment/Message)
+  entityId    String
+  eventId     String // 원천 도메인 이벤트 id(멱등 키 일부)
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  // 같은 이벤트→같은 수신자 중복 방지(at-least-once 멱등)
+  @@unique([eventId, recipientId])
+  // 목록·미읽음 조회 최적화
+  @@index([recipientId, readAt])
+}
