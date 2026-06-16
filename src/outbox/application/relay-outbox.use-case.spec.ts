@@ -59,8 +59,10 @@ describe('RelayOutboxUseCase', () => {
   it('PENDING을 emit하고 성공 시 markPublished한다', async () => {
     const { runner, store, published } = deps([record('1'), record('2')]);
     const emitted: DomainEvent[] = [];
+    // relay는 publishOrThrow를 호출한다(실패 시 throw → markFailed로 분기되도록).
     const publisher: EventPublisher = {
-      publish: (e) => {
+      publish: () => Promise.resolve(),
+      publishOrThrow: (e) => {
         emitted.push(e);
         return Promise.resolve();
       },
@@ -78,8 +80,10 @@ describe('RelayOutboxUseCase', () => {
       record('1'),
       record('2'),
     ]);
+    // publishOrThrow: evt-1은 reject → relay가 catch해 markFailed, evt-2는 resolve → markPublished.
     const publisher: EventPublisher = {
-      publish: (e) =>
+      publish: () => Promise.resolve(),
+      publishOrThrow: (e) =>
         e.eventId === 'evt-1'
           ? Promise.reject(new Error('kafka down'))
           : Promise.resolve(),
@@ -94,7 +98,10 @@ describe('RelayOutboxUseCase', () => {
 
   it('PENDING이 없으면 아무것도 발행하지 않는다', async () => {
     const { runner, store, published, failed } = deps([]);
-    const publisher: EventPublisher = { publish: () => Promise.resolve() };
+    const publisher: EventPublisher = {
+      publish: () => Promise.resolve(),
+      publishOrThrow: () => Promise.resolve(),
+    };
     const useCase = new RelayOutboxUseCase(runner, store, publisher, BATCH);
 
     await useCase.execute();

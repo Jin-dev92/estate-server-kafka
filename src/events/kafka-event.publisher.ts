@@ -19,19 +19,27 @@ export class KafkaEventPublisher implements EventPublisher, OnModuleInit {
   }
 
   async publish(event: DomainEvent): Promise<void> {
-    const topic = topicForEvent(event.eventType);
     try {
-      // 파티션 키 = entityId → 같은 엔티티 이벤트의 순서 보장.
-      await firstValueFrom(
-        this.client.emit(topic, { key: event.entityId, value: event }),
-      );
+      await this.emit(event);
     } catch (err) {
-      // after-commit 한계: DB는 이미 커밋됐으므로 발행 실패를 삼키고 로깅만 한다.
-      // 유실 방지는 M6 Transactional Outbox에서 해결한다.
+      // 직접 발행(after-commit)의 한계: 실패를 삼키고 로깅만. 유실 방지가 필요한 경로는 Outbox(publishOrThrow)를 쓴다.
       this.logger.error(
         `이벤트 발행 실패: ${event.eventType} ${event.entityId}`,
         err as Error,
       );
     }
+  }
+
+  // Outbox relay 전용: 발행 실패를 throw로 전파한다(relay가 markFailed→재시도하도록).
+  publishOrThrow(event: DomainEvent): Promise<void> {
+    return this.emit(event);
+  }
+
+  private emit(event: DomainEvent): Promise<void> {
+    const topic = topicForEvent(event.eventType);
+    // 파티션 키 = entityId → 같은 엔티티 이벤트의 순서 보장.
+    return firstValueFrom(
+      this.client.emit(topic, { key: event.entityId, value: event }),
+    ).then(() => undefined);
   }
 }

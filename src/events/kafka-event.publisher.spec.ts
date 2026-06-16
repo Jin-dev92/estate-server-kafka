@@ -67,4 +67,22 @@ describe('KafkaEventPublisher', () => {
 
     await expect(publisher.publish(eventOf())).resolves.toBeUndefined();
   });
+
+  describe('publishOrThrow — Outbox relay 전용 계약', () => {
+    it('emit 성공 시 resolve한다', async () => {
+      client.emit.mockReturnValue(of(undefined));
+
+      await expect(
+        publisher.publishOrThrow(eventOf()),
+      ).resolves.toBeUndefined();
+    });
+
+    it('emit 실패 시 reject한다(relay가 markFailed로 분기하도록)', async () => {
+      client.emit.mockReturnValue(throwError(() => new Error('broker down')));
+
+      await expect(publisher.publishOrThrow(eventOf())).rejects.toThrow(
+        'broker down',
+      );
+    });
+  });
 });

@@ -17,10 +17,17 @@ async function bootstrap() {
   logger.log(`outbox-relay 시작(폴링 ${pollMs}ms)`);
 
   // 한 틱 예외가 루프를 죽이지 않도록 보호.
+  // running 플래그: 이전 틱이 끝나기 전에 새 틱이 쌓이는 것을 방지한다(틱 누적 방지).
+  let running = false;
   setInterval(() => {
-    void relay.execute().catch((err: Error) => {
-      logger.error(`폴링 틱 실패: ${err.message}`);
-    });
+    if (running) return; // 이전 틱이 아직 진행 중이면 건너뛴다(틱 누적 방지)
+    running = true;
+    void relay
+      .execute()
+      .catch((err: Error) => logger.error(`폴링 틱 실패: ${err.message}`))
+      .finally(() => {
+        running = false;
+      });
   }, pollMs);
 }
 

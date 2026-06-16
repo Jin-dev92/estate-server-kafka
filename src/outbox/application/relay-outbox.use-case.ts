@@ -25,7 +25,7 @@ export class RelayOutboxUseCase {
       const rows = await this.outbox.fetchPending(this.batchSize, tx);
       for (const row of rows) {
         try {
-          await this.publisher.publish(row.payload);
+          await this.publisher.publishOrThrow(row.payload);
           await this.outbox.markPublished(row.id, tx);
         } catch (err) {
           // emit 실패: status 유지(attempts++) → 다음 폴링 재시도. 한 행 실패가 배치를 막지 않음.
