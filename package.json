@@ -18,6 +18,8 @@
     "start:prod:persistence": "node dist/workers/persistence-worker.main",
     "start:prod:audit": "node dist/workers/audit-worker.main",
     "start:prod:notification": "node dist/workers/notification-worker.main",
+    "start:worker:outbox": "nest start --entryFile workers/outbox-relay.main",
+    "start:prod:outbox": "node dist/workers/outbox-relay.main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
