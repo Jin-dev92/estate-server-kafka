@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Lease } from '../domain/lease.entity';
 import { LeaseStatus } from '../domain/lease-status.enum';
 import { LeaseRepository } from '../domain/lease.repository';
+import { TransactionClient } from '../../outbox/domain/transaction-runner';
 
 @Injectable()
 export class PrismaLeaseRepository implements LeaseRepository {
@@ -25,8 +26,9 @@ export class PrismaLeaseRepository implements LeaseRepository {
     });
   }
 
-  async save(lease: Lease): Promise<Lease> {
-    const row = await this.prisma.lease.create({
+  async save(lease: Lease, tx?: TransactionClient): Promise<Lease> {
+    const db = tx ?? this.prisma;
+    const row = await db.lease.create({
       data: {
         unitId: lease.unitId,
         tenantId: lease.tenantId,
@@ -46,8 +48,9 @@ export class PrismaLeaseRepository implements LeaseRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async update(lease: Lease): Promise<Lease> {
-    const row = await this.prisma.lease.update({
+  async update(lease: Lease, tx?: TransactionClient): Promise<Lease> {
+    const db = tx ?? this.prisma;
+    const row = await db.lease.update({
       where: { id: lease.id! },
       data: { status: lease.status, endDate: lease.endedAt },
     });

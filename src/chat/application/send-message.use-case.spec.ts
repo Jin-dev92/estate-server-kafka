@@ -37,6 +37,8 @@ function deps(room: ChatRoom | null) {
       published.push(e);
       return Promise.resolve();
     },
+    // chat 유스케이스는 publish만 쓴다(fire-and-forget). publishOrThrow는 Outbox relay 전용.
+    publishOrThrow: () => Promise.resolve(),
   };
   return { rooms, relay, cache, events, relayed, cached, published };
 }

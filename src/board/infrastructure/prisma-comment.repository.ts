@@ -2,13 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Comment } from '../domain/comment.entity';
 import { CommentRepository } from '../domain/comment.repository';
+import { TransactionClient } from '../../outbox/domain/transaction-runner';
 
 @Injectable()
 export class PrismaCommentRepository implements CommentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(comment: Comment): Promise<Comment> {
-    const row = await this.prisma.comment.create({
+  async create(comment: Comment, tx?: TransactionClient): Promise<Comment> {
+    const db = tx ?? this.prisma;
+    const row = await db.comment.create({
       data: {
         postId: comment.postId,
         authorId: comment.authorId,
