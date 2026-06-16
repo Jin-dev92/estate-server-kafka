@@ -159,3 +159,18 @@ model Notification {
   // 목록·미읽음 조회 최적화
   @@index([recipientId, readAt])
 }
+
+model OutboxEvent {
+  id           String    @id @default(cuid())
+  eventId      String    @unique // DomainEvent.eventId — 소비자 멱등 키와 동일
+  eventType    String
+  topic        String    // 발행 대상 토픽(적재 시 고정)
+  partitionKey String    // = entityId, 파티션 순서 보장
+  payload      Json      // DomainEvent 전체 봉투
+  status       String    @default("PENDING") // OutboxStatus: PENDING | PUBLISHED
+  createdAt    DateTime  @default(now())
+  publishedAt  DateTime?
+  attempts     Int       @default(0) // 발행 시도 횟수(관측·디버깅)
+
+  @@index([status, createdAt]) // 폴링 대상 조회
+}
