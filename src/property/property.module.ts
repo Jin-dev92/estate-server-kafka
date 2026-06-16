@@ -15,8 +15,10 @@ import { PrismaBuildingRepository } from './infrastructure/prisma-building.repos
 import { PrismaUnitRepository } from './infrastructure/prisma-unit.repository';
 import { PrismaLeaseRepository } from './infrastructure/prisma-lease.repository';
 import { RedisInviteCodeStore } from './infrastructure/redis-invite-code.store';
+import { OutboxModule } from '../outbox/outbox.module';
 
 @Module({
+  imports: [OutboxModule],
   controllers: [PropertyController],
   providers: [
     CreateBuildingUseCase,

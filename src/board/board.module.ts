@@ -14,8 +14,10 @@ import { PrismaPostRepository } from './infrastructure/prisma-post.repository';
 import { PrismaCommentRepository } from './infrastructure/prisma-comment.repository';
 import { RedisBoardCache } from './infrastructure/redis-board-cache';
 import { PrismaMembershipChecker } from './infrastructure/prisma-membership.checker';
+import { OutboxModule } from '../outbox/outbox.module';
 
 @Module({
+  imports: [OutboxModule],
   controllers: [BoardController],
   providers: [
     CreatePostUseCase,

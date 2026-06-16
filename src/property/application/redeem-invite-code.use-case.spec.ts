@@ -7,17 +7,29 @@ import {
   InviteCodeStore,
   IssuedInvite,
 } from '../domain/invite-code.store';
-import { EventPublisher } from '../../events/event-publisher';
+import {
+  TransactionRunner,
+  TransactionClient,
+} from '../../outbox/domain/transaction-runner';
+import { OutboxStore } from '../../outbox/domain/outbox-store';
 import { EventType, EntityType } from '../../events/event-type.enum';
 
 const TENANT_ID = 'tenant1';
 const UNIT_ID = 'unit1';
-// Task 5: TenantJoined 이벤트 발행 테스트용 상수
+// TenantJoined 이벤트 발행 테스트용 상수
 const TENANT_ID_EVT = 't1';
 const UNIT_ID_EVT = 'unit1';
 const LEASE_ID_EVT = 'lease1';
 const CODE_EVT = 'ABC123';
 const ISSUED_BY = 'owner1';
+
+// 테스트용 더미 TransactionClient
+const TX = {} as unknown as TransactionClient;
+
+// txRunner: 콜백을 즉시 실행해 TX를 넘긴다
+const txRunner: TransactionRunner = {
+  run: (fn) => fn(TX),
+};
 
 class FakeInviteStore implements InviteCodeStore {
   issue(): Promise<IssuedInvite> {
@@ -32,7 +44,9 @@ class FakeInviteStore implements InviteCodeStore {
 
 class CapturingLeaseRepo implements LeaseRepository {
   public saved: Lease | null = null;
-  save(lease: Lease): Promise<Lease> {
+  public lastTx: TransactionClient | undefined;
+  save(lease: Lease, tx?: TransactionClient): Promise<Lease> {
+    this.lastTx = tx;
     this.saved = Lease.reconstitute({
       id: 'lease-generated',
       unitId: lease.unitId,
@@ -53,14 +67,17 @@ class CapturingLeaseRepo implements LeaseRepository {
   }
 }
 
-/** 이벤트를 발행하지 않는 no-op 퍼블리셔 (기존 테스트용) */
-const noopEvents: EventPublisher = {
-  publish: () => Promise.resolve(),
+// no-op outbox (기존 흐름 검증 테스트용)
+const noopOutbox: OutboxStore = {
+  add: () => Promise.resolve(),
+  fetchPending: () => Promise.resolve([]),
+  markPublished: () => Promise.resolve(),
+  markFailed: () => Promise.resolve(),
 };
 
-/** Task 5: EventPublisher mock 빌더 */
+/** outbox mock 빌더 */
 function makeEventDeps(redeemResult: InviteCodePayload | null) {
-  const saved = Lease.reconstitute({
+  const savedLease = Lease.reconstitute({
     id: LEASE_ID_EVT,
     unitId: UNIT_ID_EVT,
     tenantId: TENANT_ID_EVT,
@@ -72,19 +89,26 @@ function makeEventDeps(redeemResult: InviteCodePayload | null) {
     redeem: () => Promise.resolve(redeemResult),
   };
 
+  let saveTx: TransactionClient | undefined;
   const leases: Partial<LeaseRepository> = {
-    save: () => Promise.resolve(saved),
-  };
-
-  const published: unknown[] = [];
-  const events: EventPublisher = {
-    publish: (e) => {
-      published.push(e);
-      return Promise.resolve();
+    save: (_lease, tx) => {
+      saveTx = tx;
+      return Promise.resolve(savedLease);
     },
   };
 
-  return { invites, leases, events, published };
+  const added: unknown[] = [];
+  const outbox: OutboxStore = {
+    add: (e) => {
+      added.push(e);
+      return Promise.resolve();
+    },
+    fetchPending: () => Promise.resolve([]),
+    markPublished: () => Promise.resolve(),
+    markFailed: () => Promise.resolve(),
+  };
+
+  return { invites, leases, outbox, added, getSaveTx: () => saveTx };
 }
 
 describe('RedeemInviteCodeUseCase', () => {
@@ -97,7 +121,8 @@ describe('RedeemInviteCodeUseCase', () => {
     const useCase = new RedeemInviteCodeUseCase(
       new FakeInviteStore(),
       leaseRepo,
-      noopEvents,
+      txRunner,
+      noopOutbox,
     );
 
     const lease = await useCase.execute({ tenantId: TENANT_ID, code: 'GOOD' });
@@ -106,13 +131,16 @@ describe('RedeemInviteCodeUseCase', () => {
     expect(lease.unitId).toBe(UNIT_ID);
     expect(lease.tenantId).toBe(TENANT_ID);
     expect(lease.status).toBe(LeaseStatus.ACTIVE);
+    // leases.save가 TX를 받았는지 검증
+    expect(leaseRepo.lastTx).toBe(TX);
   });
 
   it('만료·사용·오타 코드(null)면 NotFoundException', async () => {
     const useCase = new RedeemInviteCodeUseCase(
       new FakeInviteStore(),
       new CapturingLeaseRepo(),
-      noopEvents,
+      txRunner,
+      noopOutbox,
     );
 
     await expect(
@@ -120,24 +148,25 @@ describe('RedeemInviteCodeUseCase', () => {
     ).rejects.toMatchObject({ code: 'PROPERTY_INVALID_INVITE_CODE' });
   });
 
-  // ── Task 5: TenantJoined 이벤트 발행 ────────────────────────────────────
-  it('초대코드 사용 시 TenantJoined를 발행한다', async () => {
+  // ── TenantJoined 이벤트 → outbox 적재 ────────────────────────────────────
+  it('초대코드 사용 시 TenantJoined를 outbox에 적재한다', async () => {
     // Arrange
-    const { invites, leases, events, published } = makeEventDeps({
+    const { invites, leases, outbox, added, getSaveTx } = makeEventDeps({
       unitId: UNIT_ID_EVT,
       issuedBy: ISSUED_BY,
     });
     const useCase = new RedeemInviteCodeUseCase(
       invites as InviteCodeStore,
       leases as LeaseRepository,
-      events,
+      txRunner,
+      outbox,
     );
 
     // Act
     await useCase.execute({ tenantId: TENANT_ID_EVT, code: CODE_EVT });
 
     // Assert
-    expect(published).toEqual([
+    expect(added).toEqual([
       expect.objectContaining({
         eventType: EventType.TenantJoined,
         entityType: EntityType.Lease,
@@ -146,21 +175,24 @@ describe('RedeemInviteCodeUseCase', () => {
         payload: expect.objectContaining({ unitId: UNIT_ID_EVT }) as object,
       }),
     ]);
+    // leases.save가 TX를 받았는지 검증
+    expect(getSaveTx()).toBe(TX);
   });
 
-  it('유효하지 않은 코드면 발행하지 않는다', async () => {
+  it('유효하지 않은 코드면 적재하지 않는다', async () => {
     // Arrange
-    const { invites, leases, events, published } = makeEventDeps(null);
+    const { invites, leases, outbox, added } = makeEventDeps(null);
     const useCase = new RedeemInviteCodeUseCase(
       invites as InviteCodeStore,
       leases as LeaseRepository,
-      events,
+      txRunner,
+      outbox,
     );
 
     // Act & Assert
     await expect(
       useCase.execute({ tenantId: TENANT_ID_EVT, code: CODE_EVT }),
     ).rejects.toMatchObject({ code: 'PROPERTY_INVALID_INVITE_CODE' });
-    expect(published).toEqual([]);
+    expect(added).toEqual([]);
   });
 });

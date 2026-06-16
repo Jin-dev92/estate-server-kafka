@@ -9,8 +9,12 @@ import {
   BUILDING_REPOSITORY,
   BuildingRepository,
 } from '../domain/building.repository';
-import { EVENT_PUBLISHER, EventPublisher } from '../../events/event-publisher';
 import { EventType, EntityType } from '../../events/event-type.enum';
+import {
+  TRANSACTION_RUNNER,
+  TransactionRunner,
+} from '../../outbox/domain/transaction-runner';
+import { OUTBOX_STORE, OutboxStore } from '../../outbox/domain/outbox-store';
 
 export interface EndLeaseInput {
   userId: string;
@@ -24,7 +28,8 @@ export class EndLeaseUseCase {
     @Inject(UNIT_REPOSITORY) private readonly units: UnitRepository,
     @Inject(BUILDING_REPOSITORY)
     private readonly buildings: BuildingRepository,
-    @Inject(EVENT_PUBLISHER) private readonly events: EventPublisher,
+    @Inject(TRANSACTION_RUNNER) private readonly txRunner: TransactionRunner,
+    @Inject(OUTBOX_STORE) private readonly outbox: OutboxStore,
   ) {}
 
   async execute(input: EndLeaseInput): Promise<Lease> {
@@ -46,17 +51,26 @@ export class EndLeaseUseCase {
     } catch {
       throw new AppException(PropertyError.LEASE_ALREADY_ENDED);
     }
-    const saved = await this.leases.update(ended);
 
-    await this.events.publish({
-      eventId: randomUUID(),
-      eventType: EventType.LeaseEnded,
-      occurredAt: new Date().toISOString(),
-      actorId: input.userId,
-      entityType: EntityType.Lease,
-      entityId: saved.id!,
-      payload: { unitId: saved.unitId, endedAt: saved.endedAt?.toISOString() },
+    // 도메인 변경 + outbox 적재를 한 트랜잭션으로(유실 창 제거).
+    return this.txRunner.run(async (tx) => {
+      const saved = await this.leases.update(ended, tx);
+      await this.outbox.add(
+        {
+          eventId: randomUUID(),
+          eventType: EventType.LeaseEnded,
+          occurredAt: new Date().toISOString(),
+          actorId: input.userId,
+          entityType: EntityType.Lease,
+          entityId: saved.id!,
+          payload: {
+            unitId: saved.unitId,
+            endedAt: saved.endedAt?.toISOString(),
+          },
+        },
+        tx,
+      );
+      return saved;
     });
-    return saved;
   }
 }

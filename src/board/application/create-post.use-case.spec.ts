@@ -4,12 +4,19 @@ import { PostCategory } from '../domain/post-category.enum';
 import { PostRepository } from '../domain/post.repository';
 import { BoardCache } from './board-cache';
 import { MembershipChecker } from './membership';
-import { EventPublisher } from '../../events/event-publisher';
+import {
+  TransactionRunner,
+  TransactionClient,
+} from '../../outbox/domain/transaction-runner';
+import { OutboxStore } from '../../outbox/domain/outbox-store';
 import { EventType, EntityType } from '../../events/event-type.enum';
 
 const USER_ID = 'u1';
 const BUILDING_ID = 'b1';
 const POST_ID = 'p1';
+
+// 테스트용 더미 TransactionClient (타입만 맞추면 됨)
+const TX = {} as unknown as TransactionClient;
 
 function deps(isMember: boolean) {
   const saved = Post.reconstitute({
@@ -20,8 +27,14 @@ function deps(isMember: boolean) {
     title: '제목',
     content: '본문',
   });
+
+  // create가 tx를 두 번째 인자로 받는지 검증하기 위해 spy 형태로 정의
+  let lastTx: TransactionClient | undefined;
   const posts: PostRepository = {
-    create: () => Promise.resolve(saved),
+    create: (_p, tx) => {
+      lastTx = tx;
+      return Promise.resolve(saved);
+    },
     findById: () => Promise.resolve(null),
     findByBuilding: () => Promise.resolve([]),
     update: (p) => Promise.resolve(p),
@@ -33,24 +46,45 @@ function deps(isMember: boolean) {
   const membership: MembershipChecker = {
     isMember: () => Promise.resolve(isMember),
   };
-  const published: unknown[] = [];
-  const events: EventPublisher = {
-    publish: (e) => {
-      published.push(e);
+
+  // txRunner: 콜백을 즉시 실행해 TX를 넘긴다
+  const txRunner: TransactionRunner = {
+    run: (fn) => fn(TX),
+  };
+
+  // outbox: add 호출을 캡처한다
+  const added: unknown[] = [];
+  const outbox: OutboxStore = {
+    add: (e) => {
+      added.push(e);
       return Promise.resolve();
     },
+    fetchPending: () => Promise.resolve([]),
+    markPublished: () => Promise.resolve(),
+    markFailed: () => Promise.resolve(),
   };
-  return { posts, cache, membership, events, published };
+
+  return {
+    posts,
+    cache,
+    membership,
+    txRunner,
+    outbox,
+    added,
+    getLastTx: () => lastTx,
+  };
 }
 
 describe('CreatePostUseCase', () => {
-  it('멤버가 작성하면 PostCreated 이벤트를 발행한다', async () => {
-    const { posts, cache, membership, events, published } = deps(true);
+  it('멤버가 작성하면 PostCreated 이벤트를 outbox에 적재한다', async () => {
+    const { posts, cache, membership, txRunner, outbox, added, getLastTx } =
+      deps(true);
     const useCase = new CreatePostUseCase(
       posts,
       cache as BoardCache,
       membership,
-      events,
+      txRunner,
+      outbox,
     );
 
     await useCase.execute({
@@ -60,7 +94,8 @@ describe('CreatePostUseCase', () => {
       content: '본문',
     });
 
-    expect(published).toEqual([
+    // outbox에 적재된 이벤트 검증
+    expect(added).toEqual([
       expect.objectContaining({
         eventType: EventType.PostCreated,
         entityType: EntityType.Post,
@@ -69,15 +104,18 @@ describe('CreatePostUseCase', () => {
         payload: expect.objectContaining({ buildingId: BUILDING_ID }) as object,
       }),
     ]);
+    // repo.create가 TX를 받았는지 검증
+    expect(getLastTx()).toBe(TX);
   });
 
-  it('멤버가 아니면 NOT_BUILDING_MEMBER로 거부하고 발행하지 않는다', async () => {
-    const { posts, cache, membership, events, published } = deps(false);
+  it('멤버가 아니면 NOT_BUILDING_MEMBER로 거부하고 적재하지 않는다', async () => {
+    const { posts, cache, membership, txRunner, outbox, added } = deps(false);
     const useCase = new CreatePostUseCase(
       posts,
       cache as BoardCache,
       membership,
-      events,
+      txRunner,
+      outbox,
     );
 
     await expect(
@@ -88,6 +126,6 @@ describe('CreatePostUseCase', () => {
         content: 'c',
       }),
     ).rejects.toMatchObject({ code: 'BOARD_NOT_BUILDING_MEMBER' });
-    expect(published).toEqual([]);
+    expect(added).toEqual([]);
   });
 });
