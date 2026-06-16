@@ -28,7 +28,11 @@ export function profileOptions() {
 
 // 엔드포인트 성격별 threshold(설계 §3).
 export const THRESHOLDS = {
-  read: { http_req_duration: ['p95<300'], http_req_failed: ['rate<0.01'] },
-  write: { http_req_duration: ['p95<800'], http_req_failed: ['rate<0.01'] },
-  login: { http_req_duration: ['p95<1000'], http_req_failed: ['rate<0.01'] },
+  read: { http_req_duration: ['p(95)<300'], http_req_failed: ['rate<0.01'] },
+  write: { http_req_duration: ['p(95)<800'], http_req_failed: ['rate<0.01'] },
+  // login 라우트는 @RateLimit({ipMax:10})이 하드코딩이라 env 한도 상향으로 못 푼다.
+  // → load 프로파일에선 대부분 429(보안이 의도대로 동작). 실패율 threshold를 두면
+  //   "rate limit이 막는 게 정상"인데 불합격이 되므로 제외하고, 응답시간만 관측한다.
+  //   순수 bcrypt baseline이 필요하면 smoke 프로파일(윈도우당 ≤10회)로 측정한다.
+  login: { http_req_duration: ['p(95)<1000'] },
 };
