@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Post } from '../domain/post.entity';
 import { PostCategory } from '../domain/post-category.enum';
 import { PostRepository } from '../domain/post.repository';
+import { TransactionClient } from '../../outbox/domain/transaction-runner';
 
 @Injectable()
 export class PrismaPostRepository implements PostRepository {
@@ -26,8 +27,9 @@ export class PrismaPostRepository implements PostRepository {
     });
   }
 
-  async create(post: Post): Promise<Post> {
-    const row = await this.prisma.post.create({
+  async create(post: Post, tx?: TransactionClient): Promise<Post> {
+    const db = tx ?? this.prisma;
+    const row = await db.post.create({
       data: {
         buildingId: post.buildingId,
         authorId: post.authorId,
