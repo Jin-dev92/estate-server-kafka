@@ -169,6 +169,7 @@
 | **M5** ✅ | notification-worker + WS 푸시 + 미읽음 카운트 (워커별 컨슈머 그룹 분리) | 다중 컨슈머 팬아웃 |
 | **M6** ✅ | rate limit · 보안 점검 | 운영·보안 |
 | **Outbox** ✅ | Transactional Outbox(dual-write 유실 제거) + outbox-relay 워커 | 트랜잭션 정합·SKIP LOCKED·at-least-once |
+| **M7** ✅ | k6 API 부하테스트(성격별 대표 4개 + thresholds) | 성능 baseline·p95/p99·부하 도구 |
 | **F1** *(추후)* | OAuth 소셜 로그인 | 외부 인증 연동 |
 | **F2** *(추후)* | 채팅 메시지 자동 번역(외국인 입주자 대응) | 외부 API 어댑터·i18n |
 
@@ -297,6 +298,10 @@ $ npm run start:worker:outbox
 $ npm run test        # 단위 테스트
 $ npm run test:e2e    # e2e 테스트
 $ npm run test:cov    # 커버리지
+
+# 부하테스트 (k6) — load/README.md 참고
+$ npm run load:seed   # 부하용 시드(OWNER·건물·글)
+$ npm run load:read   # GET 목록 / load:create, load:login, load:ratelimit
 ```
 
 > **M5 이후 프로세스 구성:** main(HTTP+WS+producer) 1개 + 컨슈머 워커 3개. 워커는 같은 코드베이스를 다른 엔트리포인트로 띄운 별도 프로세스이며 각자 독립 consumer group으로 같은 이벤트를 한 번씩 소비합니다. 현재 main에는 비활성 `ChatPersistenceController`(microservice 미연결)가 남아 있으나 영속화는 persistence-worker가 담당합니다(후속 정리 대상).
