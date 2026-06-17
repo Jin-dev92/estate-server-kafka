@@ -18,7 +18,12 @@ describe('scrubEvent', () => {
   });
 
   it('request가 없어도 안전하게 그대로 반환한다', () => {
-    const event = { message: 'no request' };
-    expect(scrubEvent(event)).toEqual({ message: 'no request' });
+    const event = { request: undefined };
+    expect(scrubEvent(event)).toEqual({ request: undefined });
+  });
+
+  it('민감하지 않은 헤더는 그대로 둔다', () => {
+    const event = { request: { headers: { 'x-trace': 'ok' } } };
+    expect(scrubEvent(event).request?.headers).toEqual({ 'x-trace': 'ok' });
   });
 });
