@@ -79,7 +79,7 @@ function deps(opts: { lease?: Lease | null; ownerId?: string } = {}) {
     },
     fetchPending: () => Promise.resolve([]),
     markPublished: () => Promise.resolve(),
-    markFailed: () => Promise.resolve(),
+    markFailed: () => Promise.resolve({ quarantined: false }),
   };
 
   return {
