@@ -88,8 +88,12 @@
 | `POST /buildings/:id/posts` | load 20VU | **19.6ms** | 0% | DB+Outbox 한 트랜잭션 쓰기 |
 | `POST /auth/login` (순수) | smoke 1VU | **114ms** | 0% | bcrypt 검증 = CPU 바운드(읽기의 ~17배) |
 | rate-limit 경계 | iter 20 | — | — | ipMax=10 → 429 관측 10회(한도 정확) |
+| `POST .../posts` **stress**(풀=1) | ramping 10→600 RPS | **1734ms** | 0.23% | knee에서 DB 커넥션 풀 고갈 → P2024 35건, throughput 천장 ~95 RPS |
+| `POST .../posts` **spike** | 5→300→5 RPS | **10ms** | 84%* | 급증분 429 차단 4032·통과 743·5xx 0(앱 생존), 윈도우 리셋 후 회복 |
 
 - **bcrypt(로그인)가 가장 무겁다**(114ms vs 읽기 7ms) — 인증이 CPU 바운드라는 걸 숫자로 확인.
+- **stress로 병목을 이름으로 확인(M8):** 로컬은 머신이 먼저 터지므로 DB 풀을 1로 좁혀 *앱이 먼저* 터지게 한 통제 실험 → 풀을 좁힐수록 p95가 13.6→1734ms로 폭증하고 throughput은 ~95 RPS에서 평평(천장=용량). 앱 로그에 Prisma 풀 타임아웃(P2024). 숫자는 머신 한계이지 절대 한계가 아님.
+- **spike는 방어·회복 검증(M8):** 300 RPS 급증분이 429로 막히고 5xx=0(앱 생존), p95 10ms(429 거부가 값쌈). 고정 윈도우라 회복은 윈도우 리셋(≤10s) 경계에서. *84%는 의도된 방어(429)이지 실패가 아니다.*
 - **login 부하는 측정 불가:** login 라우트의 `@RateLimit({ipMax:10})`이 데코레이터 하드코딩이라 env 한도 상향으로 못 푼다 → 부하 시 ~99%가 429. *우리 rate limit이 의도대로 막는다는 증거*라, 순수 속도는 smoke로 따로 쟀다.
 - **캐시 과대평가 주의:** 모든 VU가 같은 building을 읽어 Redis hit이 ~100% → 위 6.9ms는 캐시 최상 시나리오다.
 
@@ -202,7 +206,7 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 | **M6** ✅ | rate limit · 보안 점검 | 운영·보안 |
 | **Outbox** ✅ | Transactional Outbox(dual-write 유실 제거) + outbox-relay 워커 | 트랜잭션 정합·SKIP LOCKED·at-least-once |
 | **M7** ✅ | k6 API 부하테스트(성격별 대표 4개 + thresholds) | 성능 baseline·p95/p99·부하 도구 |
-| **M8** *(예정)* | 부하 한계 탐색: stress/spike (별도 부하 머신) | k6 arrival-rate·병목·용량 계획 |
+| **M8** ✅ | 부하 한계 탐색: stress/spike (로컬·DB 풀 좁힘으로 통제 실험) | k6 arrival-rate·병목(DB 풀)·용량 계획 |
 | **M9** *(예정)* | Outbox 견고화: DLQ(FAILED 격리)·재시도 백오프 | poison message·운영 견고함 |
 | **M10** *(예정)* | Sentry 연동 — 에러 추적 + 성능 모니터링 | observability·분산 트레이싱·외부 SaaS |
 | **CI** *(예정)* | CI 파이프라인 — 부하 smoke 자동화 **+ (추가 예정)** | GitHub Actions·서비스 컨테이너 |
@@ -212,7 +216,7 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 > M0~M7은 1차 범위이며 각 단계가 독립적으로 동작 검증되도록 끊었습니다. 컨슈머는 난이도 순(audit → persistence → notification)으로 도입해 실패 비용을 점증시킵니다.
 >
 > **운영·견고함 후속(M8·M9·M10·CI)** — M0~M7로 핵심 기능·정합성·부하 baseline은 끝났고, 그 위에 운영 견고함·관측성을 얹는 후속이다. 각 항목의 배경·트레이드오프는 [학습 노트](docs/study/마일스톤-학습-노트.md)(부하 stress/spike §8.5, Outbox DLQ §8)에 정리해 두었다. 순서는 느슨하며 우선순위에 따라 조정한다.
-> - **M8 (stress/spike):** 한계점·병목 탐색. 로컬 단일 머신은 "앱이 아니라 머신이 먼저 한계"라 **별도 부하 머신**이 전제. closed VU로는 backpressure가 숨으니 open(arrival-rate) executor로 간다.
+> - **M8 (stress/spike):** ✅ 한계점·병목 탐색. 로컬 단일 머신은 "앱이 아니라 머신이 먼저 한계"라, 별도 부하 머신 대신 **DB 커넥션 풀을 1로 좁혀**(`connection_limit=1`) *앱이 먼저, 예측 지점에서* 터지게 하는 **통제 실험**으로 진행했다. closed VU로는 backpressure가 숨으니 open(arrival-rate) executor로 갔다. 결과는 §3.5.
 > - **M9 (Outbox DLQ):** 현재 relay는 발행 실패를 무한 재시도한다. poison message(영원히 실패)를 `PENDING → FAILED`로 격리해 정상 흐름을 막지 않게 한다(재시도 백오프·최대 횟수 포함).
 > - **M10 (Sentry):** 에러 추적 + 성능 모니터링. M2.5 에러 봉투는 *사용자에게* 깔끔한 응답을 주지만 서버 내부에서 무슨 일이 있었는지는 로그뿐 → `AllExceptionsFilter`의 500을 Sentry로 보내 **풀 스택·요청 컨텍스트**를 남기고, HTTP→Kafka→워커로 이어지는 **분산 트레이싱**으로 비동기 흐름을 추적한다(M7 성능 측정의 운영판). *트레이드오프(관측성 ↔ 외부 의존):* 놓치는 에러가 줄고 디버깅이 빨라지지만 외부 SaaS 의존·DSN(키) 관리·민감정보 스크러빙이 따른다. DSN은 서버 env로만.
 > - **CI (통합):** M7 부하 **smoke 자동화**(Actions 서비스 컨테이너로 PG·Redis·Kafka 기동 → 시드 → smoke → threshold 실패 시 red)를 시작점으로, **추가하고 싶은 CI 항목(린트·테스트·빌드·배포 등)을 한 마일스톤으로 통합**한다 — 구현은 그 CI 작업 시점에 함께 진행하고, 여기서는 자리만 잡아 둔다.
