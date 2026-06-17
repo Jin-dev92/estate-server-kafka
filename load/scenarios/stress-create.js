@@ -18,6 +18,9 @@ import { login, firstBuildingId, authHeaders } from '../lib/auth.js';
 // 단계별 도착률(초당 요청수). __ENV로 조절(하드코딩 금지). 기본은 10→30→60→PEAK.
 const PEAK_RATE = Number(__ENV.STRESS_PEAK_RATE) || 100;
 const STAGE = __ENV.STRESS_STAGE || '30s'; // 각 단계 유지 시간
+// in-flight VU 상한. 병목으로 요청이 적체되면 k6가 도착률 유지를 위해 VU를 더 쓴다.
+// 풀 고갈을 깊게 만들어 P2024(연결 대기 타임아웃)까지 보려면 이 상한을 키운다.
+const MAX_VUS = Number(__ENV.STRESS_MAX_VUS) || 500;
 
 // 5xx(서버 에러) 누적 카운터 — knee에서 몇 건이나 터졌는지 숫자로 본다.
 const errors5xx = new Counter('server_errors_5xx');
@@ -30,7 +33,7 @@ export const options = {
       startRate: 10, // 초당 10건으로 시작
       timeUnit: '1s', // 'target/timeUnit' = 초당 도착률
       preAllocatedVUs: 50, // 미리 잡아둘 VU(요청이 느려지면 더 필요)
-      maxVUs: 500, // 상한. 부족하면 k6가 "Insufficient VUs" 경고
+      maxVUs: MAX_VUS, // 상한(__ENV.STRESS_MAX_VUS). 부족하면 k6가 "Insufficient VUs" 경고
       stages: [
         { target: 10, duration: STAGE },
         { target: 30, duration: STAGE },
@@ -75,6 +78,9 @@ export function handleSummary(data) {
   const reqs = m.http_reqs ? m.http_reqs.values.count : 0;
   const rps = m.http_reqs ? m.http_reqs.values.rate : 0;
   const e5xx = m.server_errors_5xx ? m.server_errors_5xx.values.count : 0;
+  // dropped_iterations: open 모델에서 maxVUs가 모자라 도착률을 못 채워 버린 요청 수.
+  // 이게 크면 "backpressure가 k6 쪽에 쌓였다"는 뜻(앱 큐가 그만큼 안 깊어진다).
+  const dropped = m.dropped_iterations ? m.dropped_iterations.values.count : 0;
   console.log(
     '[stress 요약] p95=' +
       p95.toFixed(1) +
@@ -85,7 +91,9 @@ export function handleSummary(data) {
       ' RPS=' +
       rps.toFixed(1) +
       ' 5xx(병목)=' +
-      e5xx,
+      e5xx +
+      ' dropped=' +
+      dropped,
   );
   return {};
 }
