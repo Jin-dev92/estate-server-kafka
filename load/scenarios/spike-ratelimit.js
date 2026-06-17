@@ -63,13 +63,23 @@ export default function (data) {
   check(res, { 'no server error (<500)': (r) => r.status < 500 });
 }
 
+// 요약: p95·실패율과 함께 "막은 양(429) vs 통과한 양(2xx)"을 찍는다.
+// ※ k6의 http_req_failed는 429도 '실패'로 본다 → 여기 실패율이 높은 건 정상 방어의 결과다.
 export function handleSummary(data) {
-  const b = data.metrics.blocked_429
-    ? data.metrics.blocked_429.values.count
-    : 0;
-  const p = data.metrics.passed_2xx
-    ? data.metrics.passed_2xx.values.count
-    : 0;
-  console.log(`차단(429): ${b}건 / 통과(2xx): ${p}건`);
+  const m = data.metrics;
+  const p95 = m.http_req_duration ? m.http_req_duration.values['p(95)'] : 0;
+  const failRate = m.http_req_failed ? m.http_req_failed.values.rate : 0;
+  const b = m.blocked_429 ? m.blocked_429.values.count : 0;
+  const p = m.passed_2xx ? m.passed_2xx.values.count : 0;
+  console.log(
+    '[spike 요약] p95=' +
+      p95.toFixed(1) +
+      'ms (429포함)실패율=' +
+      (failRate * 100).toFixed(2) +
+      '% 차단(429)=' +
+      b +
+      ' 통과(2xx)=' +
+      p,
+  );
   return {};
 }

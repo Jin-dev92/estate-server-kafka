@@ -66,11 +66,26 @@ export default function (data) {
   // arrival-rate는 executor가 페이싱하므로 sleep(think time)을 넣지 않는다.
 }
 
-// 끝나면 5xx 누적을 찍어 knee 규모를 요약한다.
+// 끝나면 핵심 지표를 한 줄로 찍는다(기본 요약을 숨기는 대신 p95·실패율·5xx를 직접 추출).
+// p95/실패율은 knee를 읽는 핵심이고, 5xx 카운터는 병목(풀 고갈) 도달 규모다.
 export function handleSummary(data) {
-  const count = data.metrics.server_errors_5xx
-    ? data.metrics.server_errors_5xx.values.count
-    : 0;
-  console.log(`5xx(병목 도달) 관측 횟수: ${count}`);
+  const m = data.metrics;
+  const p95 = m.http_req_duration ? m.http_req_duration.values['p(95)'] : 0;
+  const failRate = m.http_req_failed ? m.http_req_failed.values.rate : 0;
+  const reqs = m.http_reqs ? m.http_reqs.values.count : 0;
+  const rps = m.http_reqs ? m.http_reqs.values.rate : 0;
+  const e5xx = m.server_errors_5xx ? m.server_errors_5xx.values.count : 0;
+  console.log(
+    '[stress 요약] p95=' +
+      p95.toFixed(1) +
+      'ms 실패율=' +
+      (failRate * 100).toFixed(2) +
+      '% 총요청=' +
+      reqs +
+      ' RPS=' +
+      rps.toFixed(1) +
+      ' 5xx(병목)=' +
+      e5xx,
+  );
   return {};
 }
