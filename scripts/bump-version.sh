@@ -45,7 +45,9 @@ fi
 
 NEW="$MAJOR.$MINOR.$PATCH"
 echo "새 버전: $CURRENT → $NEW"
-npm pkg set version="$NEW"
+# package.json과 package-lock.json의 version을 함께 갱신한다(둘 다 안 바꾸면 npm ci가
+# "out of sync"로 깨진다). --no-git-tag-version: 커밋·태그는 워크플로가 담당.
+npm version "$NEW" --no-git-tag-version --allow-same-version
 
 # 이번 버전에 포함된 변경 = 마지막 범프 이후 머지된 PR.
 # squash-merge라 커밋 제목 끝에 "(#번호)"가 박히므로 그걸 가진 줄만 목록화한다.

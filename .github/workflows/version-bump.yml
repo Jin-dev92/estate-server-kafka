@@ -35,8 +35,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # -B: 재실행 시 같은 이름 로컬 브랜치를 강제 재생성(없으면 생성)
           git checkout -B "$BRANCH"
-          git add package.json
-          git commit -m "chore: 버전 범프 v${NEW} [skip ci]" || echo "package.json 변경 없음(이미 해당 버전)"
+          git add package.json package-lock.json
+          git commit -m "chore: 버전 범프 v${NEW} [skip ci]" || echo "변경 없음(이미 해당 버전)"
           # --force: 이전 실패 실행이 남긴 동일 브랜치를 갱신(non-fast-forward 거부 회피)
           git push --force origin "$BRANCH"
           # PR이 없으면 생성, 이미 있으면 본문만 갱신(재실행 idempotent)
