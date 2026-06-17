@@ -103,7 +103,7 @@ describe('CreateCommentUseCase', () => {
       },
       fetchPending: () => Promise.resolve([]),
       markPublished: () => Promise.resolve(),
-      markFailed: () => Promise.resolve(),
+      markFailed: () => Promise.resolve({ quarantined: false }),
     };
 
     const useCase = new CreateCommentUseCase(
@@ -144,7 +144,7 @@ describe('CreateCommentUseCase', () => {
       add: () => Promise.resolve(),
       fetchPending: () => Promise.resolve([]),
       markPublished: () => Promise.resolve(),
-      markFailed: () => Promise.resolve(),
+      markFailed: () => Promise.resolve({ quarantined: false }),
     };
 
     const useCase = new CreateCommentUseCase(
@@ -167,7 +167,7 @@ describe('CreateCommentUseCase', () => {
       add: () => Promise.resolve(),
       fetchPending: () => Promise.resolve([]),
       markPublished: () => Promise.resolve(),
-      markFailed: () => Promise.resolve(),
+      markFailed: () => Promise.resolve({ quarantined: false }),
     };
 
     const useCase = new CreateCommentUseCase(

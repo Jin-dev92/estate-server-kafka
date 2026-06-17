@@ -72,7 +72,7 @@ const noopOutbox: OutboxStore = {
   add: () => Promise.resolve(),
   fetchPending: () => Promise.resolve([]),
   markPublished: () => Promise.resolve(),
-  markFailed: () => Promise.resolve(),
+  markFailed: () => Promise.resolve({ quarantined: false }),
 };
 
 /** outbox mock 빌더 */
@@ -105,7 +105,7 @@ function makeEventDeps(redeemResult: InviteCodePayload | null) {
     },
     fetchPending: () => Promise.resolve([]),
     markPublished: () => Promise.resolve(),
-    markFailed: () => Promise.resolve(),
+    markFailed: () => Promise.resolve({ quarantined: false }),
   };
 
   return { invites, leases, outbox, added, getSaveTx: () => saveTx };

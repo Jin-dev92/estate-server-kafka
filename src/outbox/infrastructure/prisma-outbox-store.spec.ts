@@ -14,11 +14,17 @@ const event: DomainEvent = {
   payload: { buildingId: 'b1' },
 };
 
+const MAX_ATTEMPTS = 5;
+const BASE_MS = 1000;
+const CAP_MS = 60000;
+
 describe('PrismaOutboxStore', () => {
+  afterEach(() => jest.clearAllMocks());
+
   it('add는 이벤트를 PENDING·topic 채워 tx로 INSERT한다', async () => {
     const create = jest.fn().mockResolvedValue({});
     const tx = { outboxEvent: { create } } as unknown as TransactionClient;
-    const store = new PrismaOutboxStore();
+    const store = new PrismaOutboxStore(MAX_ATTEMPTS, BASE_MS, CAP_MS);
 
     await store.add(event, tx);
 
@@ -37,7 +43,7 @@ describe('PrismaOutboxStore', () => {
   it('markPublished는 PUBLISHED·publishedAt로 갱신한다', async () => {
     const update = jest.fn().mockResolvedValue({});
     const tx = { outboxEvent: { update } } as unknown as TransactionClient;
-    const store = new PrismaOutboxStore();
+    const store = new PrismaOutboxStore(MAX_ATTEMPTS, BASE_MS, CAP_MS);
 
     await store.markPublished('row1', tx);
 
@@ -50,16 +56,41 @@ describe('PrismaOutboxStore', () => {
     });
   });
 
-  it('markFailed는 attempts만 증가시킨다(status 유지)', async () => {
+  it('markFailed는 최대 미만이면 백오프(nextAttemptAt) 후 PENDING 유지', async () => {
     const update = jest.fn().mockResolvedValue({});
     const tx = { outboxEvent: { update } } as unknown as TransactionClient;
-    const store = new PrismaOutboxStore();
+    const store = new PrismaOutboxStore(MAX_ATTEMPTS, BASE_MS, CAP_MS);
 
-    await store.markFailed('row1', tx);
+    const result = await store.markFailed('row1', 0, 'kafka down', tx);
 
+    expect(result).toEqual({ quarantined: false });
     expect(update).toHaveBeenCalledWith({
       where: { id: 'row1' },
-      data: { attempts: { increment: 1 } },
+      data: {
+        attempts: 1,
+        lastError: 'kafka down',
+        nextAttemptAt: expect.any(Date) as Date,
+      },
+    });
+  });
+
+  it('markFailed는 최대 도달 시 FAILED로 격리한다', async () => {
+    const update = jest.fn().mockResolvedValue({});
+    const tx = { outboxEvent: { update } } as unknown as TransactionClient;
+    const store = new PrismaOutboxStore(MAX_ATTEMPTS, BASE_MS, CAP_MS);
+
+    // attempts=4 → +1=5 == MAX_ATTEMPTS → 격리
+    const result = await store.markFailed('row1', 4, 'permanent', tx);
+
+    expect(result).toEqual({ quarantined: true });
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'row1' },
+      data: {
+        status: OutboxStatus.Failed,
+        attempts: 5,
+        lastError: 'permanent',
+        failedAt: expect.any(Date) as Date,
+      },
     });
   });
 
@@ -76,11 +107,15 @@ describe('PrismaOutboxStore', () => {
       },
     ]);
     const tx = { $queryRaw: queryRaw } as unknown as TransactionClient;
-    const store = new PrismaOutboxStore();
+    const store = new PrismaOutboxStore(MAX_ATTEMPTS, BASE_MS, CAP_MS);
 
     const rows = await store.fetchPending(10, tx);
 
     expect(queryRaw).toHaveBeenCalledTimes(1);
+    // 백오프 필터·SKIP LOCKED가 실제 쿼리에 들어가는지 SQL 텍스트로 가드(회귀 방지).
+    const sql = (queryRaw.mock.calls[0][0] as { sql: string }).sql;
+    expect(sql).toContain('"nextAttemptAt" IS NULL OR "nextAttemptAt" <= now()');
+    expect(sql).toContain('FOR UPDATE SKIP LOCKED');
     expect(rows).toEqual([
       {
         id: 'row1',

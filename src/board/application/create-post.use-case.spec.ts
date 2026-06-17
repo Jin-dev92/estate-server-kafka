@@ -61,7 +61,7 @@ function deps(isMember: boolean) {
     },
     fetchPending: () => Promise.resolve([]),
     markPublished: () => Promise.resolve(),
-    markFailed: () => Promise.resolve(),
+    markFailed: () => Promise.resolve({ quarantined: false }),
   };
 
   return {
