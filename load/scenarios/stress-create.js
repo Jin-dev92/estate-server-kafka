@@ -3,10 +3,11 @@
 //   급증하고 5xx가 시작되는가(=knee). 그 순간 앱 로그에 Prisma 풀 타임아웃이 찍히면
 //   "병목 = DB 커넥션 풀"이라는 증거다.
 // 실행 전제(중요): 앱을 DB 풀을 좁혀 띄운다 → 머신보다 풀이 먼저 고갈돼 통제된 실험이 된다.
-//   DATABASE_URL="...?...&connection_limit=5" \
+//   DATABASE_URL="...?...&connection_limit=1&pool_timeout=1" \
 //   RATE_LIMIT_USER_MAX=1000000 RATE_LIMIT_IP_MAX=1000000 node dist/main.js
 //   (+ npm run start:worker:outbox — 글작성은 Outbox 경로를 함께 쓴다)
-// 실행: STRESS_PEAK_RATE=100 k6 run load/scenarios/stress-create.js
+// 실행(P2024까지 보려면 오래·깊게 민다):
+//   STRESS_STAGE=40s STRESS_PEAK_RATE=600 STRESS_MAX_VUS=2000 k6 run load/scenarios/stress-create.js
 // (k6 생명주기·open/closed 모델 설명은 ../config.js 맨 위 주석 참고)
 
 import http from 'k6/http';

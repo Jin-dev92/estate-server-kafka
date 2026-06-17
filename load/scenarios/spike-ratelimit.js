@@ -16,6 +16,7 @@ import { login, firstBuildingId, authHeaders } from '../lib/auth.js';
 
 const BASE_RATE = Number(__ENV.SPIKE_BASE_RATE) || 5; // 평상시 초당 요청
 const PEAK_RATE = Number(__ENV.SPIKE_PEAK_RATE) || 300; // 급증 정점
+const MAX_VUS = Number(__ENV.SPIKE_MAX_VUS) || 800; // in-flight VU 상한(급증 시 도착률 유지용)
 
 // 차단된 429와 통과한 2xx를 따로 세어 "막은 양 vs 통과한 양"을 숫자로 본다.
 const blocked429 = new Counter('blocked_429');
@@ -28,7 +29,7 @@ export const options = {
       startRate: BASE_RATE,
       timeUnit: '1s',
       preAllocatedVUs: 50,
-      maxVUs: 800, // 급증 시 도착률 유지를 위해 넉넉히
+      maxVUs: MAX_VUS, // 급증 시 도착률 유지를 위해 넉넉히(__ENV.SPIKE_MAX_VUS)
       stages: [
         { target: BASE_RATE, duration: '20s' }, // 평상시(baseline 구간)
         { target: PEAK_RATE, duration: '5s' }, // 급증(확 치솟음)

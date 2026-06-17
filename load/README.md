@@ -32,8 +32,8 @@ open(arrival-rate) 모델이라 closed(VU)와 띄우는 법이 다르다. 로컬
 "머신이 먼저 한계"라 의미가 흐려지므로, **자원을 일부러 좁혀 앱이 먼저 터지게** 한다.
 
 - **stress (DB 풀 병목 보기):** DB 커넥션 풀을 좁히고 rate limit은 풀어 띄운다.
-  `DATABASE_URL="...&connection_limit=5" RATE_LIMIT_USER_MAX=1000000 RATE_LIMIT_IP_MAX=1000000 node dist/main.js`
-  (+ `npm run start:worker:outbox`) → RPS를 올리면 풀 고갈 knee에서 5xx + 앱 로그에 Prisma 풀 타임아웃.
+  `DATABASE_URL="...&connection_limit=1&pool_timeout=1" RATE_LIMIT_USER_MAX=1000000 RATE_LIMIT_IP_MAX=1000000 node dist/main.js`
+  (+ `npm run start:worker:outbox`) → `STRESS_STAGE=40s STRESS_PEAK_RATE=600 STRESS_MAX_VUS=2000`으로 오래·깊게 밀면 knee에서 5xx + 앱 로그에 Prisma 풀 타임아웃(P2024).
 - **spike (방어·회복 보기):** rate limit을 **정상/유한 한도**로 띄운다(상향 X). window를 짧게 두면 회복을 빨리 본다.
   `RATE_LIMIT_WINDOW_SEC=10 RATE_LIMIT_USER_MAX=200 RATE_LIMIT_IP_MAX=200 node dist/main.js`
 
