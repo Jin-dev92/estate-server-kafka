@@ -19,6 +19,8 @@ const BASE_MS = 1000;
 const CAP_MS = 60000;
 
 describe('PrismaOutboxStore', () => {
+  afterEach(() => jest.clearAllMocks());
+
   it('add는 이벤트를 PENDING·topic 채워 tx로 INSERT한다', async () => {
     const create = jest.fn().mockResolvedValue({});
     const tx = { outboxEvent: { create } } as unknown as TransactionClient;

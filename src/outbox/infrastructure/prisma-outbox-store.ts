@@ -105,6 +105,8 @@ export class PrismaOutboxStore implements OutboxStore {
       data: {
         attempts: nextAttempts,
         lastError: error,
+        // NOTE: 여기 Date.now()는 앱 서버 시각, fetchPending의 비교 now()는 DB 시각.
+        // NTP 동기화 환경에서 스큐 < 1s라 백오프 정밀도에 실질 영향 없음(같은 머신이면 0).
         nextAttemptAt: new Date(Date.now() + delayMs),
       },
     });

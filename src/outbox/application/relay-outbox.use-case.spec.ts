@@ -57,6 +57,8 @@ function deps(pending: OutboxRecord[]) {
 }
 
 describe('RelayOutboxUseCase', () => {
+  afterEach(() => jest.clearAllMocks());
+
   it('PENDING을 emit하고 성공 시 markPublished한다', async () => {
     const { runner, store, published } = deps([record('1'), record('2')]);
     const emitted: DomainEvent[] = [];
@@ -89,12 +91,18 @@ describe('RelayOutboxUseCase', () => {
           ? Promise.reject(new Error('kafka down'))
           : Promise.resolve(),
     };
+    const warnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
     const useCase = new RelayOutboxUseCase(runner, store, publisher, BATCH);
 
     await useCase.execute();
 
     expect(failed).toEqual([{ id: '1', attempts: 0, error: 'kafka down' }]);
     expect(published).toEqual(['2']);
+    // 격리(ERROR)와 대칭: 백오프 재시도 분기는 WARN 로그를 남긴다.
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
   });
 
   it('markFailed가 격리(quarantined)면 ERROR 로그를 남긴다', async () => {
