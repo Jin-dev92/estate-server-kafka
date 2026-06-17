@@ -131,7 +131,7 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 
 ## 5. 주요 설계 결정·트레이드오프
 
-이 프로젝트의 모든 설계는 "왜 그렇게 했는가"를 근거와 트레이드오프로 남겼습니다. 핵심 결정 11가지를 요약합니다. *(각 결정의 더 깊은 맥락과 대안 비교는 [설계 스펙 문서](docs/superpowers/specs/2026-06-11-building-owner-platform-design.md)에 있습니다.)*
+이 프로젝트의 모든 설계는 "왜 그렇게 했는가"를 근거와 트레이드오프로 남겼습니다. 핵심 결정 13가지를 요약합니다. *(각 결정의 더 깊은 맥락과 대안 비교는 [설계 스펙 문서](docs/superpowers/specs/2026-06-11-building-owner-platform-design.md)에 있습니다.)*
 
 **1. 도메인을 `건물 → 호실 → 입주` 3계층으로**
 - *근거:* 호실 단위 점유·소통("특정 호실 입주자에게만 보이는 공지")을 표현할 수 있다. 2계층은 이 구분이 사라지고, 일반 Workspace 추상화는 건물주 도메인의 의미가 흐려진다.
