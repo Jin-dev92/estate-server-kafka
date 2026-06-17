@@ -16,6 +16,8 @@
 | `npm run load:create` | POST 글작성 |
 | `npm run load:login` | POST 로그인 |
 | `npm run load:ratelimit` | 429 경계 |
+| `npm run load:stress` | stress(create-post, DB 풀 고갈 knee 탐색) |
+| `npm run load:spike` | spike(급증 시 rate limit 방어·회복) |
 
 프로파일/규모: `PROFILE=load VUS=20 k6 run load/scenarios/read-posts.js`
 
@@ -23,6 +25,17 @@
 부하가 rate limit에 걸리므로, 측정 시 한도를 크게 띄운다:
 `RATE_LIMIT_USER_MAX=100000 RATE_LIMIT_IP_MAX=100000 node dist/main.js`
 rate-limit 시나리오는 반대로 낮은 한도로 띄워 429를 검증한다.
+
+## stress/spike 실행 전제 (M8)
+
+open(arrival-rate) 모델이라 closed(VU)와 띄우는 법이 다르다. 로컬 단일 머신에선
+"머신이 먼저 한계"라 의미가 흐려지므로, **자원을 일부러 좁혀 앱이 먼저 터지게** 한다.
+
+- **stress (DB 풀 병목 보기):** DB 커넥션 풀을 좁히고 rate limit은 풀어 띄운다.
+  `DATABASE_URL="...&connection_limit=5" RATE_LIMIT_USER_MAX=1000000 RATE_LIMIT_IP_MAX=1000000 node dist/main.js`
+  (+ `npm run start:worker:outbox`) → RPS를 올리면 풀 고갈 knee에서 5xx + 앱 로그에 Prisma 풀 타임아웃.
+- **spike (방어·회복 보기):** rate limit을 **정상/유한 한도**로 띄운다(상향 X). window를 짧게 두면 회복을 빨리 본다.
+  `RATE_LIMIT_WINDOW_SEC=10 RATE_LIMIT_USER_MAX=200 RATE_LIMIT_IP_MAX=200 node dist/main.js`
 
 ## 결과 기록
 > 환경: 로컬 단일 머신(앱+PG+Redis+Kafka 동시 구동) — 절대치가 아니라 **상대 비교·회귀 감지**용.
