@@ -35,6 +35,7 @@
 | **실시간 통신** | WebSocket (NestJS Gateway) | 1:1 채팅·알림 푸시 |
 | **아키텍처** | DDD (도메인 주도 설계) | 바운디드 컨텍스트 + 레이어드 구조 |
 | **테스트/품질** | Jest, ESLint, Prettier | 단위·e2e 테스트, 정적 검사 |
+| **부하테스트** | k6 | 핵심 엔드포인트 성능 baseline(p95·RPS·에러율) 측정 (M7) |
 
 ---
 
@@ -68,6 +69,37 @@
 - **RBAC + 리소스 소유권 검사** 이중 인가 (역할만 보지 않고 "이 건물/방/글의 소유자인가"까지 확인)
 - **백엔드 rate limit** (userId + IP 이중 제한)
 - 민감정보(JWT 시크릿, DB/Kafka/Redis 접속 정보)는 서버 환경변수로만 관리
+
+### 성능·부하테스트 (k6, M7)
+- 성격이 다른 대표 엔드포인트를 [k6](https://k6.io)로 재 **성능 baseline** 확보 — 평균이 아니라 **p95/p99**(꼬리 지연)로 본다
+- 합격 기준을 `thresholds`로 **코드화**(예: `p(95)<300ms`, 실패율 `<1%`) → 미달 시 k6가 exit≠0
+- **smoke**(정상성) / **load**(baseline) 프로파일, think time으로 "현실적 동시 사용자" 측정
+- 부하테스트의 전형적 딜레마 **"측정이 측정을 방해"** 를 직접 마주침 — rate limit이 부하를 막음
+
+---
+
+## 3.5 부하테스트 결과 (M7 baseline)
+
+> 로컬 단일 머신(앱+PG+Redis+Kafka 동시 구동) 기준 — 절대치가 아니라 **상대 비교·회귀 감지**용. 실행법·전체 표·발견은 [`load/README.md`](load/README.md), 개념 정리는 [학습 노트 §8.5](docs/study/마일스톤-학습-노트.md).
+
+| 시나리오 | 프로파일 | p95 | 에러율 | 무엇을 보나 |
+|---|---|---|---|---|
+| `GET /buildings/:id/posts` | load 20VU | **6.9ms** | 0% | Redis read-through 캐시 읽기 |
+| `POST /buildings/:id/posts` | load 20VU | **19.6ms** | 0% | DB+Outbox 한 트랜잭션 쓰기 |
+| `POST /auth/login` (순수) | smoke 1VU | **114ms** | 0% | bcrypt 검증 = CPU 바운드(읽기의 ~17배) |
+| rate-limit 경계 | iter 20 | — | — | ipMax=10 → 429 관측 10회(한도 정확) |
+
+- **bcrypt(로그인)가 가장 무겁다**(114ms vs 읽기 7ms) — 인증이 CPU 바운드라는 걸 숫자로 확인.
+- **login 부하는 측정 불가:** login 라우트의 `@RateLimit({ipMax:10})`이 데코레이터 하드코딩이라 env 한도 상향으로 못 푼다 → 부하 시 ~99%가 429. *우리 rate limit이 의도대로 막는다는 증거*라, 순수 속도는 smoke로 따로 쟀다.
+- **캐시 과대평가 주의:** 모든 VU가 같은 building을 읽어 Redis hit이 ~100% → 위 6.9ms는 캐시 최상 시나리오다.
+
+**실행 요약**(자세히는 `load/README.md`):
+```bash
+docker compose up -d && npm run build
+RATE_LIMIT_USER_MAX=1000000 RATE_LIMIT_IP_MAX=1000000 node dist/main.js   # 부하 측정 시 한도 상향
+npm run load:seed                  # 부하용 시드(OWNER·건물·글)
+PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
+```
 
 ---
 
@@ -169,10 +201,21 @@
 | **M5** ✅ | notification-worker + WS 푸시 + 미읽음 카운트 (워커별 컨슈머 그룹 분리) | 다중 컨슈머 팬아웃 |
 | **M6** ✅ | rate limit · 보안 점검 | 운영·보안 |
 | **Outbox** ✅ | Transactional Outbox(dual-write 유실 제거) + outbox-relay 워커 | 트랜잭션 정합·SKIP LOCKED·at-least-once |
+| **M7** ✅ | k6 API 부하테스트(성격별 대표 4개 + thresholds) | 성능 baseline·p95/p99·부하 도구 |
+| **M8** *(예정)* | 부하 한계 탐색: stress/spike (별도 부하 머신) | k6 arrival-rate·병목·용량 계획 |
+| **M9** *(예정)* | Outbox 견고화: DLQ(FAILED 격리)·재시도 백오프 | poison message·운영 견고함 |
+| **M10** *(예정)* | Sentry 연동 — 에러 추적 + 성능 모니터링 | observability·분산 트레이싱·외부 SaaS |
+| **CI** *(예정)* | CI 파이프라인 — 부하 smoke 자동화 **+ (추가 예정)** | GitHub Actions·서비스 컨테이너 |
 | **F1** *(추후)* | OAuth 소셜 로그인 | 외부 인증 연동 |
 | **F2** *(추후)* | 채팅 메시지 자동 번역(외국인 입주자 대응) | 외부 API 어댑터·i18n |
 
-> M0~M6은 1차 범위이며 각 단계가 독립적으로 동작 검증되도록 끊었습니다. 컨슈머는 난이도 순(audit → persistence → notification)으로 도입해 실패 비용을 점증시킵니다.
+> M0~M7은 1차 범위이며 각 단계가 독립적으로 동작 검증되도록 끊었습니다. 컨슈머는 난이도 순(audit → persistence → notification)으로 도입해 실패 비용을 점증시킵니다.
+>
+> **운영·견고함 후속(M8·M9·M10·CI)** — M0~M7로 핵심 기능·정합성·부하 baseline은 끝났고, 그 위에 운영 견고함·관측성을 얹는 후속이다. 각 항목의 배경·트레이드오프는 [학습 노트](docs/study/마일스톤-학습-노트.md)(부하 stress/spike §8.5, Outbox DLQ §8)에 정리해 두었다. 순서는 느슨하며 우선순위에 따라 조정한다.
+> - **M8 (stress/spike):** 한계점·병목 탐색. 로컬 단일 머신은 "앱이 아니라 머신이 먼저 한계"라 **별도 부하 머신**이 전제. closed VU로는 backpressure가 숨으니 open(arrival-rate) executor로 간다.
+> - **M9 (Outbox DLQ):** 현재 relay는 발행 실패를 무한 재시도한다. poison message(영원히 실패)를 `PENDING → FAILED`로 격리해 정상 흐름을 막지 않게 한다(재시도 백오프·최대 횟수 포함).
+> - **M10 (Sentry):** 에러 추적 + 성능 모니터링. M2.5 에러 봉투는 *사용자에게* 깔끔한 응답을 주지만 서버 내부에서 무슨 일이 있었는지는 로그뿐 → `AllExceptionsFilter`의 500을 Sentry로 보내 **풀 스택·요청 컨텍스트**를 남기고, HTTP→Kafka→워커로 이어지는 **분산 트레이싱**으로 비동기 흐름을 추적한다(M7 성능 측정의 운영판). *트레이드오프(관측성 ↔ 외부 의존):* 놓치는 에러가 줄고 디버깅이 빨라지지만 외부 SaaS 의존·DSN(키) 관리·민감정보 스크러빙이 따른다. DSN은 서버 env로만.
+> - **CI (통합):** M7 부하 **smoke 자동화**(Actions 서비스 컨테이너로 PG·Redis·Kafka 기동 → 시드 → smoke → threshold 실패 시 red)를 시작점으로, **추가하고 싶은 CI 항목(린트·테스트·빌드·배포 등)을 한 마일스톤으로 통합**한다 — 구현은 그 CI 작업 시점에 함께 진행하고, 여기서는 자리만 잡아 둔다.
 
 ---
 
@@ -297,6 +340,10 @@ $ npm run start:worker:outbox
 $ npm run test        # 단위 테스트
 $ npm run test:e2e    # e2e 테스트
 $ npm run test:cov    # 커버리지
+
+# 부하테스트 (k6) — load/README.md 참고
+$ npm run load:seed   # 부하용 시드(OWNER·건물·글)
+$ npm run load:read   # GET 목록 / load:create, load:login, load:ratelimit
 ```
 
 > **M5 이후 프로세스 구성:** main(HTTP+WS+producer) 1개 + 컨슈머 워커 3개. 워커는 같은 코드베이스를 다른 엔트리포인트로 띄운 별도 프로세스이며 각자 독립 consumer group으로 같은 이벤트를 한 번씩 소비합니다. 현재 main에는 비활성 `ChatPersistenceController`(microservice 미연결)가 남아 있으나 영속화는 persistence-worker가 담당합니다(후속 정리 대상).
