@@ -8,7 +8,7 @@
 ## 무엇을 하나
 
 - **트리거**: `pull_request` `opened` / `ready_for_review`, base 브랜치 `dev`·`main`, 변경 경로 `src/**/*.ts`·`prisma/**`·`test/**/*.ts`.
-- **동작**: `anthropics/claude-code-action@v1`이 `CLAUDE.md`·`README.md`·`docs/superpowers/specs`·`docs/study`를 읽고, 8개 관점(기능/안정성/성능/이벤트·분산/보안/테스트/품질·컨벤션/문서화)으로 리뷰 → `gh pr comment`로 등록.
+- **동작**: `anthropics/claude-code-action@v1`이 `CLAUDE.md`·`README.md`·`docs/superpowers/specs`·`docs/study`를 읽고, 9개 관점(기능/안정성/성능/이벤트·분산/보안/테스트/품질·컨벤션/**아키텍처(DDD)**/문서화)으로 리뷰 → `gh pr comment`로 등록.
 - **draft PR**은 리뷰하지 않음(`draft == false`).
 
 ## 과금 — 왜 이건 켤 수 있나
