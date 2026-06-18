@@ -97,7 +97,7 @@ describe('AllExceptionsFilter', () => {
 
     expect(Sentry.captureException).toHaveBeenCalledTimes(1);
     // 2번째 인자(scope 콜백)를 mock scope로 실행해 컨텍스트 설정을 검증
-    const scopeCb = (Sentry.captureException as jest.Mock).mock.calls[0][1] as (
+    const scopeCb = jest.mocked(Sentry.captureException).mock.calls[0][1] as (
       s: unknown,
     ) => unknown;
     const setUser = jest.fn();
@@ -124,7 +124,7 @@ describe('AllExceptionsFilter', () => {
     filter.catch(new DomainError('제목은 필수입니다.'), host);
 
     expect(Sentry.captureException).toHaveBeenCalledTimes(1);
-    const scopeCb = (Sentry.captureException as jest.Mock).mock.calls[0][1] as (
+    const scopeCb = jest.mocked(Sentry.captureException).mock.calls[0][1] as (
       s: unknown,
     ) => unknown;
     const setLevel = jest.fn();
