@@ -142,8 +142,16 @@ export class PropertyController {
   @ApiParam({ name: 'buildingId', description: '호실을 조회할 건물 ID' })
   @ApiOperation({ summary: '건물 호실 목록 조회(OWNER, 건물 소유자)' })
   @ApiResponse({ status: 200, type: [UnitViewDto] })
-  @ApiResponse({ status: 403, type: ErrorResponseDto, description: '건물 소유자 아님' })
-  @ApiResponse({ status: 404, type: ErrorResponseDto, description: '건물 없음' })
+  @ApiResponse({
+    status: 403,
+    type: ErrorResponseDto,
+    description: '건물 소유자 아님',
+  })
+  @ApiResponse({
+    status: 404,
+    type: ErrorResponseDto,
+    description: '건물 없음',
+  })
   listUnitsHandler(
     @CurrentUser() user: TokenPayload,
     @Param('buildingId') buildingId: string,
