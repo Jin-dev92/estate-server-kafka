@@ -62,6 +62,19 @@ describe('SignUpUseCase', () => {
     expect(user.role).toBe('TENANT');
   });
 
+  it('ADMIN 역할로 가입 시도하면 INVALID_ROLE 예외', async () => {
+    const repo = new FakeUserRepo();
+    const useCase = new SignUpUseCase(repo, fakeHasher);
+    await expect(
+      useCase.execute({
+        email: 'x@test.com',
+        name: 'x',
+        password: 'pw123456',
+        role: Role.ADMIN,
+      }),
+    ).rejects.toMatchObject({ code: 'AUTH_INVALID_ROLE' });
+  });
+
   it('이미 존재하는 이메일이면 예외', async () => {
     const repo = new FakeUserRepo();
     const useCase = new SignUpUseCase(repo, fakeHasher);

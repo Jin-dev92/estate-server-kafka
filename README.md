@@ -236,7 +236,7 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 
 | 메서드·경로 | 기능 | 인가 |
 |---|---|---|
-| `POST /auth/signup` | 회원가입(기본 역할 TENANT) | 공개 |
+| `POST /auth/signup` | 회원가입(기본 역할 TENANT; `role` 선택적 — OWNER·TENANT만 허용, ADMIN 불가) | 공개 |
 | `POST /auth/login` | 로그인, JWT `accessToken` 발급 | 공개 |
 | `GET /auth/me` | 내 정보(id·email·role) 조회 | 인증 |
 
@@ -248,6 +248,7 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 | `GET /buildings` | 내 건물 목록 | OWNER |
 | `POST /buildings/:buildingId/units` | 호실 생성 | OWNER(건물 소유자) |
 | `POST /units/:unitId/invite-codes` | 초대코드 발급(Redis TTL 24h) | OWNER(건물 소유자) |
+| `GET /invite-codes/:code/preview` | 초대코드 미리보기(코드 비소비, `{valid, buildingName?, unitName?}` 반환) | 미인증 공개 |
 | `POST /invite-codes/redeem` | 초대코드 사용 → 입주(Lease 생성) | 인증 |
 | `GET /me/leases` | 내 입주(Lease) 목록 | 인증 |
 | `PATCH /leases/:id/end` | 계약 종료 | 인증 + 건물 OWNER |

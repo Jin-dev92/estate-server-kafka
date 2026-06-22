@@ -50,6 +50,30 @@ describe('PreviewInviteCodeUseCase', () => {
     });
   });
 
+  it('코드는 유효하나 호실이 없으면 valid=false', async () => {
+    const nullUnits: Partial<UnitRepository> = {
+      findById: () => Promise.resolve(null),
+    };
+    const useCase = new PreviewInviteCodeUseCase(
+      makeStore({ unitId: 'u1', issuedBy: 'o1' }),
+      nullUnits as UnitRepository,
+      buildings as BuildingRepository,
+    );
+    expect(await useCase.execute('CODE')).toEqual({ valid: false });
+  });
+
+  it('호실은 있으나 건물이 없으면 valid=false', async () => {
+    const nullBuildings: Partial<BuildingRepository> = {
+      findById: () => Promise.resolve(null),
+    };
+    const useCase = new PreviewInviteCodeUseCase(
+      makeStore({ unitId: 'u1', issuedBy: 'o1' }),
+      units as UnitRepository,
+      nullBuildings as BuildingRepository,
+    );
+    expect(await useCase.execute('CODE')).toEqual({ valid: false });
+  });
+
   it('만료·없는 코드면 valid=false (이름 없음)', async () => {
     const useCase = new PreviewInviteCodeUseCase(
       makeStore(null),

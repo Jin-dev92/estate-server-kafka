@@ -22,7 +22,12 @@ export class SignUpDto {
   password: string;
 
   // 자가 가입은 OWNER/TENANT만 허용. ADMIN 자가 부여 차단(보안).
-  @ApiPropertyOptional({ enum: [Role.OWNER, Role.TENANT], example: Role.OWNER })
+  @ApiPropertyOptional({
+    enum: Role,
+    enumName: 'Role',
+    example: Role.OWNER,
+    description: '자가 가입은 OWNER 또는 TENANT만 허용(ADMIN 불가)',
+  })
   @IsOptional()
   @IsIn([Role.OWNER, Role.TENANT])
   role?: Role;

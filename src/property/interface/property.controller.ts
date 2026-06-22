@@ -34,6 +34,7 @@ import { CreateUnitDto } from './dto/create-unit.dto';
 import { RedeemInviteDto } from './dto/redeem-invite.dto';
 import { ErrorResponseDto } from '../../common/errors/error-response.dto';
 import { SWAGGER_BEARER_AUTH } from '../../common/swagger/swagger.constants';
+import { InvitePreviewDto } from './dto/invite-preview.dto';
 
 @ApiTags('property')
 // 대부분의 라우트가 JwtAuthGuard로 보호되므로 클래스 레벨에 한 번만 선언한다.
@@ -159,11 +160,8 @@ export class PropertyController {
   @RateLimit({ ipMax: 20 })
   @ApiOperation({ summary: '초대코드 미리보기(미인증, 비소비)' })
   @ApiParam({ name: 'code', description: '미리볼 초대코드' })
-  @ApiResponse({
-    status: 200,
-    description: '{ valid, buildingName?, unitName? } — 코드를 소비하지 않음',
-  })
-  previewInviteHandler(@Param('code') code: string) {
+  @ApiResponse({ status: 200, type: InvitePreviewDto })
+  previewInviteHandler(@Param('code') code: string): Promise<InvitePreviewDto> {
     return this.previewInvite.execute(code);
   }
 
