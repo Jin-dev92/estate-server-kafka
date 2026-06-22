@@ -27,6 +27,8 @@ import { RedeemInviteCodeUseCase } from '../application/redeem-invite-code.use-c
 import { ListMyBuildingsUseCase } from '../application/list-my-buildings.use-case';
 import { ListMyLeasesUseCase } from '../application/list-my-leases.use-case';
 import { EndLeaseUseCase } from '../application/end-lease.use-case';
+import { PreviewInviteCodeUseCase } from '../application/preview-invite-code.use-case';
+import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { RedeemInviteDto } from './dto/redeem-invite.dto';
@@ -46,6 +48,7 @@ export class PropertyController {
     private readonly listMyBuildings: ListMyBuildingsUseCase,
     private readonly listMyLeases: ListMyLeasesUseCase,
     private readonly endLease: EndLeaseUseCase,
+    private readonly previewInvite: PreviewInviteCodeUseCase,
   ) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -149,6 +152,18 @@ export class PropertyController {
     @Param('unitId') unitId: string,
   ) {
     return this.issueInvite.execute({ ownerId: user.sub, unitId });
+  }
+
+  @Get('invite-codes/:code/preview')
+  @RateLimit({ ipMax: 20 })
+  @ApiOperation({ summary: '초대코드 미리보기(미인증, 비소비)' })
+  @ApiParam({ name: 'code', description: '미리볼 초대코드' })
+  @ApiResponse({
+    status: 200,
+    description: '{ valid, buildingName?, unitName? } — 코드를 소비하지 않음',
+  })
+  previewInviteHandler(@Param('code') code: string) {
+    return this.previewInvite.execute(code);
   }
 
   @UseGuards(JwtAuthGuard)
