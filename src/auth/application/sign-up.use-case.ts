@@ -4,11 +4,13 @@ import { USER_REPOSITORY, UserRepository } from '../domain/user.repository';
 import { PASSWORD_HASHER, PasswordHasher } from '../domain/password-hasher';
 import { AppException } from '../../common/errors/app-exception';
 import { AuthError } from '../auth.errors';
+import { Role } from '../domain/role.enum';
 
 export interface SignUpInput {
   email: string;
   name: string;
   password: string;
+  role?: Role;
 }
 
 @Injectable()
@@ -19,6 +21,10 @@ export class SignUpUseCase {
   ) {}
 
   async execute(input: SignUpInput): Promise<User> {
+    const ALLOWED_SELF_SIGNUP_ROLES: Role[] = [Role.OWNER, Role.TENANT];
+    if (input.role && !ALLOWED_SELF_SIGNUP_ROLES.includes(input.role)) {
+      throw new AppException(AuthError.INVALID_ROLE);
+    }
     const existing = await this.users.findByEmail(input.email);
     if (existing) throw new AppException(AuthError.EMAIL_IN_USE);
     const passwordHash = await this.hasher.hash(input.password);
@@ -26,6 +32,7 @@ export class SignUpUseCase {
       email: input.email,
       name: input.name,
       passwordHash,
+      role: input.role,
     });
     return this.users.save(user);
   }

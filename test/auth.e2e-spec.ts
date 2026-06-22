@@ -10,6 +10,7 @@ describe('Auth (e2e)', () => {
   let prisma: PrismaService;
   const email = `e2e_${Date.now()}@test.com`;
   const dupEmail = `dup_${Date.now()}@test.com`;
+  const ownerEmail = `owner_${Date.now()}@test.com`;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -25,7 +26,7 @@ describe('Auth (e2e)', () => {
 
   afterAll(async () => {
     await prisma.user.deleteMany({
-      where: { email: { in: [email, dupEmail] } },
+      where: { email: { in: [email, dupEmail, ownerEmail] } },
     });
     await app.close();
   });
@@ -68,6 +69,33 @@ describe('Auth (e2e)', () => {
         email: `short_${Date.now()}@test.com`,
         name: 'x',
         password: 'short',
+      })
+      .expect(400);
+  });
+
+  it('role을 OWNER로 지정해 signup하면 role=OWNER', async () => {
+    await request(app.getHttpServer() as App)
+      .post('/auth/signup')
+      .send({
+        email: ownerEmail,
+        name: '사장',
+        password: 'pw123456',
+        role: 'OWNER',
+      })
+      .expect(201)
+      .expect((res) =>
+        expect((res.body as { role: string }).role).toBe('OWNER'),
+      );
+  });
+
+  it('role을 ADMIN으로 자가 부여하면 400', async () => {
+    await request(app.getHttpServer() as App)
+      .post('/auth/signup')
+      .send({
+        email: `adm_${Date.now()}@test.com`,
+        name: 'x',
+        password: 'pw123456',
+        role: 'ADMIN',
       })
       .expect(400);
   });

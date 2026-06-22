@@ -55,6 +55,9 @@ class FakeInviteStore implements InviteCodeStore {
   redeem(): Promise<InviteCodePayload | null> {
     return Promise.resolve(null);
   }
+  peek(): Promise<InviteCodePayload | null> {
+    return Promise.resolve(null);
+  }
 }
 
 describe('IssueInviteCodeUseCase', () => {

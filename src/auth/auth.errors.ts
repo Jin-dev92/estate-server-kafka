@@ -17,4 +17,9 @@ export const AuthError = {
     status: HttpStatus.FORBIDDEN,
     message: '권한이 없습니다.',
   },
+  INVALID_ROLE: {
+    code: 'AUTH_INVALID_ROLE',
+    status: HttpStatus.BAD_REQUEST,
+    message: '허용되지 않은 역할입니다.',
+  },
 } as const satisfies Record<string, AppErrorSpec>;

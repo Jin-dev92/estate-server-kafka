@@ -40,6 +40,9 @@ class FakeInviteStore implements InviteCodeStore {
       code === 'GOOD' ? { unitId: UNIT_ID, issuedBy: 'owner1' } : null,
     );
   }
+  peek(): Promise<InviteCodePayload | null> {
+    return Promise.resolve(null);
+  }
 }
 
 class CapturingLeaseRepo implements LeaseRepository {

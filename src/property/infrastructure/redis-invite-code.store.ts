@@ -34,4 +34,11 @@ export class RedisInviteCodeStore implements InviteCodeStore {
     if (!raw) return null;
     return JSON.parse(raw) as InviteCodePayload;
   }
+
+  async peek(code: string): Promise<InviteCodePayload | null> {
+    // GET: 삭제하지 않고 조회만(redeem과 달리 코드를 소비하지 않음)
+    const raw = await this.redis.get(this.key(code));
+    if (!raw) return null;
+    return JSON.parse(raw) as InviteCodePayload;
+  }
 }

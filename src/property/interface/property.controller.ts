@@ -27,14 +27,18 @@ import { RedeemInviteCodeUseCase } from '../application/redeem-invite-code.use-c
 import { ListMyBuildingsUseCase } from '../application/list-my-buildings.use-case';
 import { ListMyLeasesUseCase } from '../application/list-my-leases.use-case';
 import { EndLeaseUseCase } from '../application/end-lease.use-case';
+import { PreviewInviteCodeUseCase } from '../application/preview-invite-code.use-case';
+import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { RedeemInviteDto } from './dto/redeem-invite.dto';
 import { ErrorResponseDto } from '../../common/errors/error-response.dto';
 import { SWAGGER_BEARER_AUTH } from '../../common/swagger/swagger.constants';
+import { InvitePreviewDto } from './dto/invite-preview.dto';
 
 @ApiTags('property')
-// 모든 라우트가 JwtAuthGuard 로 보호되므로 클래스 레벨에 한 번만 선언한다.
+// 대부분의 라우트가 JwtAuthGuard로 보호되므로 클래스 레벨에 한 번만 선언한다.
+// 예외: GET invite-codes/:code/preview 는 미인증 공개 라우트(가드 없음).
 @ApiBearerAuth(SWAGGER_BEARER_AUTH)
 @Controller()
 export class PropertyController {
@@ -46,6 +50,7 @@ export class PropertyController {
     private readonly listMyBuildings: ListMyBuildingsUseCase,
     private readonly listMyLeases: ListMyLeasesUseCase,
     private readonly endLease: EndLeaseUseCase,
+    private readonly previewInvite: PreviewInviteCodeUseCase,
   ) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -149,6 +154,15 @@ export class PropertyController {
     @Param('unitId') unitId: string,
   ) {
     return this.issueInvite.execute({ ownerId: user.sub, unitId });
+  }
+
+  @Get('invite-codes/:code/preview')
+  @RateLimit({ ipMax: 20 })
+  @ApiOperation({ summary: '초대코드 미리보기(미인증, 비소비)' })
+  @ApiParam({ name: 'code', description: '미리볼 초대코드' })
+  @ApiResponse({ status: 200, type: InvitePreviewDto })
+  previewInviteHandler(@Param('code') code: string): Promise<InvitePreviewDto> {
+    return this.previewInvite.execute(code);
   }
 
   @UseGuards(JwtAuthGuard)
