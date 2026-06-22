@@ -3,6 +3,8 @@
 건물주와 입주자를 잇는 백엔드 플랫폼입니다.
 **Prisma · Redis · Kafka** 를 한 프로젝트 안에서 의미 있게 엮어 보며, 분산·이벤트 드리븐 백엔드 설계 역량을 쌓기 위한 개인 학습 프로젝트입니다.
 
+> **레포 구성:** 백엔드(이 레포) + 프론트엔드 `web/`(Next.js, [estate-web](https://github.com/Jin-dev92/estate-web) **git 서브모듈**). 함께 받으려면 `git clone --recurse-submodules`(또는 클론 후 `git submodule update --init --recursive`).
+
 > **상태:** 설계 확정, 마일스톤 기반 구현 진행. 상세 설계는 [설계 스펙 문서](docs/superpowers/specs/2026-06-11-building-owner-platform-design.md)에 정리되어 있습니다.
 
 ---
@@ -37,6 +39,7 @@
 | **테스트/품질** | Jest, ESLint, Prettier | 단위·e2e 테스트, 정적 검사 |
 | **부하테스트** | k6 | 핵심 엔드포인트 성능 baseline(p95·RPS·에러율) 측정 (M7) |
 | **관측성** | Sentry | 에러 추적 + 성능 모니터링(트랜잭션) (M10) |
+| **프론트엔드** | Next.js 16 (App Router), React 19, Tailwind v4 | `web/` 서브모듈([estate-web](https://github.com/Jin-dev92/estate-web)). 온보딩 등 사용자 화면 |
 
 ---
 
@@ -324,6 +327,10 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 ## 8. 실행 방법
 
 ```bash
+# 0) 클론 — FE는 web/ 서브모듈이므로 함께 받기
+$ git clone --recurse-submodules https://github.com/Jin-dev92/estate-server-kafka.git
+#   이미 클론했다면: git submodule update --init --recursive
+
 # 인프라(PostgreSQL·Redis·Kafka) 기동
 $ docker compose up -d
 
@@ -348,6 +355,9 @@ $ npm run start:worker:outbox
 $ npm run test        # 단위 테스트
 $ npm run test:e2e    # e2e 테스트
 $ npm run test:cov    # 커버리지
+
+# 프론트엔드(web/ = estate-web, Next.js) — 백엔드와 별개 프로세스
+$ cd web && npm install && npm run dev   # http://localhost:3000
 
 # 부하테스트 (k6) — load/README.md 참고
 $ npm run load:seed   # 부하용 시드(OWNER·건물·글)
