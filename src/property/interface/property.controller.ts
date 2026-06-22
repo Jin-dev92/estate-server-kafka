@@ -28,6 +28,7 @@ import { ListMyBuildingsUseCase } from '../application/list-my-buildings.use-cas
 import { ListMyLeasesUseCase } from '../application/list-my-leases.use-case';
 import { EndLeaseUseCase } from '../application/end-lease.use-case';
 import { PreviewInviteCodeUseCase } from '../application/preview-invite-code.use-case';
+import { ListBuildingUnitsUseCase } from '../application/list-building-units.use-case';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
@@ -35,6 +36,7 @@ import { RedeemInviteDto } from './dto/redeem-invite.dto';
 import { ErrorResponseDto } from '../../common/errors/error-response.dto';
 import { SWAGGER_BEARER_AUTH } from '../../common/swagger/swagger.constants';
 import { InvitePreviewDto } from './dto/invite-preview.dto';
+import { UnitViewDto } from './dto/unit-view.dto';
 
 @ApiTags('property')
 // 대부분의 라우트가 JwtAuthGuard로 보호되므로 클래스 레벨에 한 번만 선언한다.
@@ -51,6 +53,7 @@ export class PropertyController {
     private readonly listMyLeases: ListMyLeasesUseCase,
     private readonly endLease: EndLeaseUseCase,
     private readonly previewInvite: PreviewInviteCodeUseCase,
+    private readonly listUnits: ListBuildingUnitsUseCase,
   ) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -131,6 +134,21 @@ export class PropertyController {
       name: unit.name,
       floor: unit.floor,
     };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.OWNER)
+  @Get('buildings/:buildingId/units')
+  @ApiParam({ name: 'buildingId', description: '호실을 조회할 건물 ID' })
+  @ApiOperation({ summary: '건물 호실 목록 조회(OWNER, 건물 소유자)' })
+  @ApiResponse({ status: 200, type: [UnitViewDto] })
+  @ApiResponse({ status: 403, type: ErrorResponseDto, description: '건물 소유자 아님' })
+  @ApiResponse({ status: 404, type: ErrorResponseDto, description: '건물 없음' })
+  listUnitsHandler(
+    @CurrentUser() user: TokenPayload,
+    @Param('buildingId') buildingId: string,
+  ): Promise<UnitViewDto[]> {
+    return this.listUnits.execute({ ownerId: user.sub, buildingId });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
