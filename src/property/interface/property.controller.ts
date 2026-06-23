@@ -219,7 +219,9 @@ export class PropertyController {
   @Get('me/leases')
   @ApiOperation({ summary: '내 임대 목록 조회(건물·호실 이름 포함)' })
   @ApiResponse({ status: 200, type: [LeaseViewDto] })
-  async myLeasesHandler(@CurrentUser() user: TokenPayload): Promise<LeaseViewDto[]> {
+  async myLeasesHandler(
+    @CurrentUser() user: TokenPayload,
+  ): Promise<LeaseViewDto[]> {
     return this.listMyLeases.execute(user.sub);
   }
 

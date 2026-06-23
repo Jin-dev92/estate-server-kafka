@@ -14,7 +14,12 @@ const LEASE = Lease.reconstitute({
   status: LeaseStatus.ACTIVE,
   endedAt: null,
 });
-const UNIT = Unit.reconstitute({ id: 'u1', buildingId: 'b1', name: '1503호', floor: 15 });
+const UNIT = Unit.reconstitute({
+  id: 'u1',
+  buildingId: 'b1',
+  name: '1503호',
+  floor: 15,
+});
 const BUILDING = Building.reconstitute({
   id: 'b1',
   ownerId: 'o1',

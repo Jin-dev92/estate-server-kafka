@@ -7,5 +7,6 @@ export class LeaseViewDto {
   @ApiProperty({ nullable: true, type: String }) unitName: string | null;
   @ApiProperty({ nullable: true, type: String }) buildingName: string | null;
   @ApiProperty({ nullable: true, type: String }) buildingId: string | null;
-  @ApiProperty({ enum: LeaseStatus, enumName: 'LeaseStatus' }) status: LeaseStatus;
+  @ApiProperty({ enum: LeaseStatus, enumName: 'LeaseStatus' })
+  status: LeaseStatus;
 }

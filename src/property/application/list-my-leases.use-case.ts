@@ -2,7 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { LeaseStatus } from '../domain/lease-status.enum';
 import { LEASE_REPOSITORY, LeaseRepository } from '../domain/lease.repository';
 import { UNIT_REPOSITORY, UnitRepository } from '../domain/unit.repository';
-import { BUILDING_REPOSITORY, BuildingRepository } from '../domain/building.repository';
+import {
+  BUILDING_REPOSITORY,
+  BuildingRepository,
+} from '../domain/building.repository';
 
 export interface LeaseView {
   id: string;
@@ -26,7 +29,9 @@ export class ListMyLeasesUseCase {
     return Promise.all(
       leases.map(async (l): Promise<LeaseView> => {
         const unit = await this.units.findById(l.unitId);
-        const building = unit ? await this.buildings.findById(unit.buildingId) : null;
+        const building = unit
+          ? await this.buildings.findById(unit.buildingId)
+          : null;
         return {
           id: l.id!,
           unitId: l.unitId,
