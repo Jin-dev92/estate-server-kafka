@@ -37,6 +37,7 @@ import { ErrorResponseDto } from '../../common/errors/error-response.dto';
 import { SWAGGER_BEARER_AUTH } from '../../common/swagger/swagger.constants';
 import { InvitePreviewDto } from './dto/invite-preview.dto';
 import { UnitViewDto } from './dto/unit-view.dto';
+import { LeaseViewDto } from './dto/lease-view.dto';
 
 @ApiTags('property')
 // 대부분의 라우트가 JwtAuthGuard로 보호되므로 클래스 레벨에 한 번만 선언한다.
@@ -216,18 +217,12 @@ export class PropertyController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me/leases')
-  @ApiOperation({ summary: '내 임대 목록 조회' })
-  @ApiResponse({
-    status: 200,
-    description: '내 임대 목록. 각 status ∈ ACTIVE | ENDED',
-  })
-  async myLeasesHandler(@CurrentUser() user: TokenPayload) {
-    const leases = await this.listMyLeases.execute(user.sub);
-    return leases.map((l) => ({
-      id: l.id,
-      unitId: l.unitId,
-      status: l.status,
-    }));
+  @ApiOperation({ summary: '내 임대 목록 조회(건물·호실 이름 포함)' })
+  @ApiResponse({ status: 200, type: [LeaseViewDto] })
+  async myLeasesHandler(
+    @CurrentUser() user: TokenPayload,
+  ): Promise<LeaseViewDto[]> {
+    return this.listMyLeases.execute(user.sub);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
