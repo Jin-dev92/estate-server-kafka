@@ -8,4 +8,6 @@ export interface NotificationRepository {
   listForUser(userId: string, limit: number): Promise<Notification[]>;
   // 수신자의 미읽음 알림을 모두 읽음 처리. 영향 행 수와 무관하게 멱등.
   markAllRead(userId: string): Promise<void>;
+  // 수신자의 단건을 읽음 처리. unread→read로 실제 전이됐으면 true(멱등·소유자 검증).
+  markOneRead(userId: string, id: string): Promise<boolean>;
 }

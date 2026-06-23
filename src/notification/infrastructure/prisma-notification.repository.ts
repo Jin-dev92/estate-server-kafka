@@ -65,6 +65,14 @@ export class PrismaNotificationRepository implements NotificationRepository {
     });
   }
 
+  async markOneRead(userId: string, id: string): Promise<boolean> {
+    const res = await this.prisma.notification.updateMany({
+      where: { id, recipientId: userId, readAt: null },
+      data: { readAt: new Date() },
+    });
+    return res.count === 1;
+  }
+
   private toEntity(row: NotificationRow): Notification {
     return Notification.reconstitute({
       id: row.id,

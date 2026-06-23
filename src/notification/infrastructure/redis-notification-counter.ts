@@ -25,6 +25,12 @@ export class RedisNotificationCounter implements NotificationCounter {
     return v ? Number(v) : 0;
   }
 
+  async decrement(userId: string): Promise<void> {
+    // 단건 읽음 시 1 감소. 드리프트로 음수가 되면 0으로 보정.
+    const v = await this.redis.decr(unreadKey(userId));
+    if (v < 0) await this.redis.set(unreadKey(userId), '0');
+  }
+
   async reset(userId: string): Promise<void> {
     await this.redis.del(unreadKey(userId));
   }
