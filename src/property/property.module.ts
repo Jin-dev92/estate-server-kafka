@@ -8,6 +8,7 @@ import { ListMyBuildingsUseCase } from './application/list-my-buildings.use-case
 import { ListMyLeasesUseCase } from './application/list-my-leases.use-case';
 import { EndLeaseUseCase } from './application/end-lease.use-case';
 import { PreviewInviteCodeUseCase } from './application/preview-invite-code.use-case';
+import { ListBuildingUnitsUseCase } from './application/list-building-units.use-case';
 import { BUILDING_REPOSITORY } from './domain/building.repository';
 import { UNIT_REPOSITORY } from './domain/unit.repository';
 import { LEASE_REPOSITORY } from './domain/lease.repository';
@@ -30,6 +31,7 @@ import { OutboxModule } from '../outbox/outbox.module';
     ListMyLeasesUseCase,
     EndLeaseUseCase,
     PreviewInviteCodeUseCase,
+    ListBuildingUnitsUseCase,
     { provide: BUILDING_REPOSITORY, useClass: PrismaBuildingRepository },
     { provide: UNIT_REPOSITORY, useClass: PrismaUnitRepository },
     { provide: LEASE_REPOSITORY, useClass: PrismaLeaseRepository },

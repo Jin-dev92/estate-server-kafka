@@ -178,6 +178,55 @@ describe('Property (e2e)', () => {
       .expect(404);
   });
 
+  it('OWNER: 건물 호실 목록 조회 → 생성한 호실 포함', async () => {
+    const building = await request(app.getHttpServer() as App)
+      .post('/buildings')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: '호실목록 테스트 건물', address: '서울시 마포구' })
+      .expect(201);
+    const buildingId = (building.body as { id: string }).id;
+
+    const unit = await request(app.getHttpServer() as App)
+      .post(`/buildings/${buildingId}/units`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: '301호', floor: 3 })
+      .expect(201);
+    const unitId = (unit.body as { id: string }).id;
+
+    await request(app.getHttpServer() as App)
+      .get(`/buildings/${buildingId}/units`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200)
+      .expect((res) => {
+        const units = res.body as Array<{
+          id: string;
+          buildingId: string;
+          name: string;
+          floor: number;
+        }>;
+        const found = units.find((u) => u.id === unitId);
+        expect(found).toBeDefined();
+        expect(found?.buildingId).toBe(buildingId);
+        expect(found?.name).toBe('301호');
+        expect(found?.floor).toBe(3);
+      });
+  });
+
+  it('TENANT가 건물 호실 목록 조회 시도 → 403 (RBAC)', async () => {
+    const owner = await prisma.user.findUnique({
+      where: { email: ownerEmail },
+    });
+    const someBuilding = await prisma.building.findFirst({
+      where: { ownerId: owner!.id },
+      select: { id: true },
+    });
+
+    await request(app.getHttpServer() as App)
+      .get(`/buildings/${someBuilding!.id}/units`)
+      .set('Authorization', `Bearer ${tenantToken}`)
+      .expect(403);
+  });
+
   it('다른 소유자의 건물에 호실 생성 시도 → 403 (소유권 검사)', async () => {
     const owner = await prisma.user.findUnique({
       where: { email: ownerEmail },
