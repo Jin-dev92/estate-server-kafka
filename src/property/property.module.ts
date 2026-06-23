@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
-import { PropertyController } from './interface/property.controller';
+import { BuildingController } from './interface/building.controller';
+import { UnitController } from './interface/unit.controller';
+import { InviteController } from './interface/invite.controller';
+import { LeaseController } from './interface/lease.controller';
 import { CreateBuildingUseCase } from './application/create-building.use-case';
 import { CreateUnitUseCase } from './application/create-unit.use-case';
 import { IssueInviteCodeUseCase } from './application/issue-invite-code.use-case';
@@ -21,7 +24,12 @@ import { OutboxModule } from '../outbox/outbox.module';
 
 @Module({
   imports: [OutboxModule],
-  controllers: [PropertyController],
+  controllers: [
+    BuildingController,
+    UnitController,
+    LeaseController,
+    InviteController,
+  ],
   providers: [
     CreateBuildingUseCase,
     CreateUnitUseCase,
