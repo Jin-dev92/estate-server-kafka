@@ -118,6 +118,23 @@ describe('Property (e2e)', () => {
       });
   });
 
+  it('GET /me/leases는 건물·호실 이름과 buildingId를 포함한다', async () => {
+    const res = await request(app.getHttpServer() as App)
+      .get('/me/leases')
+      .set('Authorization', `Bearer ${tenantToken}`)
+      .expect(200);
+    const body = res.body as Array<{
+      unitName: string | null;
+      buildingName: string | null;
+      buildingId: string | null;
+      status: string;
+    }>;
+    expect(body.length).toBeGreaterThan(0);
+    expect(body[0].unitName).toBeTruthy();
+    expect(body[0].buildingName).toBeTruthy();
+    expect(body[0].buildingId).toBeTruthy();
+  });
+
   it('입주자(TENANT)가 건물 생성 시도 → 403 (RBAC)', async () => {
     await request(app.getHttpServer() as App)
       .post('/buildings')
