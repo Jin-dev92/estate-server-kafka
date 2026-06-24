@@ -35,6 +35,8 @@ function build(compareResult: boolean) {
 }
 
 describe('ChangePasswordUseCase', () => {
+  afterEach(() => jest.clearAllMocks());
+
   it('현재 비번이 맞으면 새 해시로 update', async () => {
     const { useCase, updatedHashes } = build(true);
     await useCase.execute('u1', 'current', 'newpass12');
@@ -49,5 +51,22 @@ describe('ChangePasswordUseCase', () => {
       code: 'AUTH_INVALID_CREDENTIALS',
     });
     expect(updatedHashes).toEqual([]);
+  });
+
+  it('사용자가 없으면 USER_NOT_FOUND', async () => {
+    const users: Partial<UserRepository> = {
+      findById: () => Promise.resolve(null),
+    };
+    const hasher: Partial<PasswordHasher> = {
+      compare: () => Promise.resolve(true),
+      hash: () => Promise.resolve('NEW_HASH'),
+    };
+    const useCase = new ChangePasswordUseCase(
+      users as UserRepository,
+      hasher as PasswordHasher,
+    );
+    await expect(useCase.execute('u1', 'c', 'newpass12')).rejects.toMatchObject(
+      { code: 'AUTH_USER_NOT_FOUND' },
+    );
   });
 });

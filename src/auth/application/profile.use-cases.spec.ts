@@ -15,6 +15,8 @@ function sampleUser(name = '김철수'): User {
 }
 
 describe('프로필 유스케이스', () => {
+  afterEach(() => jest.clearAllMocks());
+
   it('GetProfile: findById 결과를 반환', async () => {
     const repo: Partial<UserRepository> = {
       findById: () => Promise.resolve(sampleUser()),
@@ -47,5 +49,21 @@ describe('프로필 유스케이스', () => {
     const result = await useCase.execute('u1', '이영희');
     expect(result.name).toBe('이영희');
     expect(updated).toEqual(['이영희']);
+  });
+
+  it('UpdateProfile: 공백 이름이면 DomainError(update 안 함)', async () => {
+    const updated: string[] = [];
+    const repo: Partial<UserRepository> = {
+      findById: () => Promise.resolve(sampleUser()),
+      update: (u) => {
+        updated.push(u.name);
+        return Promise.resolve(u);
+      },
+    };
+    const useCase = new UpdateProfileUseCase(repo as UserRepository);
+    await expect(useCase.execute('u1', '   ')).rejects.toThrow(
+      '이름은 필수입니다.',
+    );
+    expect(updated).toEqual([]);
   });
 });

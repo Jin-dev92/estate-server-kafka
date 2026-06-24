@@ -97,6 +97,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
+  @RateLimit({ ipMax: 10 })
   @ApiBearerAuth(SWAGGER_BEARER_AUTH)
   @ApiOperation({ summary: '프로필(이름) 수정' })
   @ApiResponse({ status: 200, type: ProfileResponseDto })
@@ -116,9 +117,17 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('password')
+  @RateLimit({ ipMax: 10 })
   @ApiBearerAuth(SWAGGER_BEARER_AUTH)
   @ApiOperation({ summary: '비밀번호 변경' })
-  @ApiResponse({ status: 200, description: '변경 완료' })
+  @ApiResponse({
+    status: 200,
+    description: '변경 완료',
+    schema: {
+      type: 'object',
+      properties: { ok: { type: 'boolean', example: true } },
+    },
+  })
   @ApiResponse({
     status: 401,
     type: ErrorResponseDto,

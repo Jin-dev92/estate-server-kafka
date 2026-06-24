@@ -51,8 +51,9 @@ export class User {
 
   // 불변: 이름만 바꾼 새 인스턴스를 반환한다.
   rename(name: string): User {
-    if (!name) throw new DomainError('이름은 필수입니다.');
-    return new User({ ...this.props, name });
+    const trimmed = name?.trim();
+    if (!trimmed) throw new DomainError('이름은 필수입니다.');
+    return new User({ ...this.props, name: trimmed });
   }
 
   // 불변: 비밀번호 해시만 바꾼 새 인스턴스를 반환한다.

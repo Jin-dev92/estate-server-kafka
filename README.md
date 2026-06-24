@@ -241,7 +241,10 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 |---|---|---|
 | `POST /auth/signup` | 회원가입(기본 역할 TENANT; `role` 선택적 — OWNER·TENANT만 허용, ADMIN 불가) | 공개 |
 | `POST /auth/login` | 로그인, JWT `accessToken` 발급 | 공개 |
-| `GET /auth/me` | 내 정보(id·email·role) 조회 | 인증 |
+| `GET /auth/me` | 내 정보(id·email·role) 조회(토큰 기반, DB 미조회) | 인증 |
+| `GET /auth/profile` | 프로필(id·email·name·role) 조회(DB) | 인증(본인) |
+| `PATCH /auth/profile` | 프로필 이름 수정 | 인증(본인) |
+| `PATCH /auth/password` | 비밀번호 변경(현재 비번 확인 + 새 비번 8자+) | 인증(본인) |
 
 ### Property (M1)
 
