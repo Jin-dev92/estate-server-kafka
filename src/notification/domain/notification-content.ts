@@ -30,7 +30,7 @@ export function buildContent(event: DomainEvent): NotificationContent | null {
       };
     }
     case EventType.CommentCreated: {
-      const p = event.payload as { postId: string; buildingId: string };
+      const p = event.payload as { postId: string; buildingId: string | null };
       return {
         type: NotificationType.CommentAdded,
         title: '새 댓글',
@@ -41,7 +41,7 @@ export function buildContent(event: DomainEvent): NotificationContent | null {
       };
     }
     case EventType.PostCreated: {
-      const p = event.payload as { title: string; buildingId: string };
+      const p = event.payload as { title: string; buildingId: string | null };
       return {
         type: NotificationType.PostAdded,
         title: '새 게시글',

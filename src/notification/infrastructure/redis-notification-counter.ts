@@ -26,9 +26,14 @@ export class RedisNotificationCounter implements NotificationCounter {
   }
 
   async decrement(userId: string): Promise<void> {
-    // 단건 읽음 시 1 감소. 드리프트로 음수가 되면 0으로 보정.
-    const v = await this.redis.decr(unreadKey(userId));
-    if (v < 0) await this.redis.set(unreadKey(userId), '0');
+    // 단건 읽음 시 1 감소. DECR과 0 보정 SET을 Lua로 원자화한다.
+    // (두 커맨드 사이에 새 알림 INCR이 끼면 카운트가 유실될 수 있으므로 단일 원자 블록)
+    const LUA = `
+      local v = redis.call('DECR', KEYS[1])
+      if v < 0 then redis.call('SET', KEYS[1], '0') end
+      return v
+    `;
+    await this.redis.runScript(LUA, [unreadKey(userId)]);
   }
 
   async reset(userId: string): Promise<void> {

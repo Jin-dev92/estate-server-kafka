@@ -284,9 +284,10 @@ PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
 
 | 메서드·경로 | 기능 | 인가 |
 |---|---|---|
-| `GET /notifications` | 내 알림 목록(최신순, `?limit=` 기본 50·최대 100) | 인증(본인) |
+| `GET /notifications` | 내 알림 목록(최신순, `?limit=` 기본 50·최대 100, 딥링크용 `buildingId` 포함) | 인증(본인) |
 | `GET /notifications/unread-count` | 미읽음 수(Redis 원자적 카운터) | 인증(본인) |
 | `PATCH /notifications/read` | 전체 읽음 처리 + 카운터 리셋 | 인증(본인) |
+| `PATCH /notifications/:id/read` | 단건 읽음 처리(+미읽음 카운터 감소, 멱등) | 인증(본인) |
 | WS `/notifications` (`notification` 이벤트) | 실시간 알림 푸시(socket.io 네임스페이스, 핸드셰이크 `auth.token` JWT) | 본인(연결 시 `user:{userId}` 룸 자동 join) |
 
 > notification-worker가 `MessageSent`·`CommentCreated`·`PostCreated`를 독립 consumer group으로 받아 수신자별 `Notification`을 멱등 적재(`@@unique[eventId,recipientId]`)하고, 미읽음 카운터를 INCR하며, 접속 중 수신자에겐 Redis 채널 → main `/notifications` WS로 푸시합니다. 수신자 해석: 채팅=방 상대방, 댓글=글 작성자, 게시글=건물 멤버(작성자/발신자 제외).
