@@ -1,4 +1,11 @@
-import { Controller, Get, Patch, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -13,6 +20,7 @@ import { SWAGGER_BEARER_AUTH } from '../../common/swagger/swagger.constants';
 import { ListNotificationsUseCase } from '../application/list-notifications.use-case';
 import { GetUnreadCountUseCase } from '../application/get-unread-count.use-case';
 import { MarkAllReadUseCase } from '../application/mark-all-read.use-case';
+import { MarkOneReadUseCase } from '../application/mark-one-read.use-case';
 import {
   NotificationResponseDto,
   UnreadCountResponseDto,
@@ -31,6 +39,7 @@ export class NotificationController {
     private readonly list: ListNotificationsUseCase,
     private readonly unread: GetUnreadCountUseCase,
     private readonly markRead: MarkAllReadUseCase,
+    private readonly markOne: MarkOneReadUseCase,
   ) {}
 
   @Get()
@@ -54,6 +63,7 @@ export class NotificationController {
       body: r.body,
       entityType: r.entityType,
       entityId: r.entityId,
+      buildingId: r.buildingId,
       readAt: r.readAt ? r.readAt.toISOString() : null,
       createdAt: (r.createdAt ?? new Date()).toISOString(),
     }));
@@ -83,6 +93,22 @@ export class NotificationController {
   })
   async readAll(@CurrentUser() user: TokenPayload): Promise<{ ok: true }> {
     await this.markRead.execute(user.sub);
+    return { ok: true };
+  }
+
+  @Patch(':id/read')
+  @ApiOperation({ summary: '단건 읽음 처리' })
+  @ApiResponse({ status: 200, description: '처리 완료' })
+  @ApiResponse({
+    status: 401,
+    type: ErrorResponseDto,
+    description: '인증 필요',
+  })
+  async readOne(
+    @CurrentUser() user: TokenPayload,
+    @Param('id') id: string,
+  ): Promise<{ ok: true }> {
+    await this.markOne.execute(user.sub, id);
     return { ok: true };
   }
 }

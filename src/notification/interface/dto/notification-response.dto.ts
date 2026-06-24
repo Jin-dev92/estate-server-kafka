@@ -8,6 +8,7 @@ export class NotificationResponseDto {
   @ApiProperty({ nullable: true }) body!: string | null;
   @ApiProperty() entityType!: string;
   @ApiProperty() entityId!: string;
+  @ApiProperty({ nullable: true }) buildingId!: string | null;
   @ApiProperty({ nullable: true, type: String, format: 'date-time' })
   readAt!: string | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: string;

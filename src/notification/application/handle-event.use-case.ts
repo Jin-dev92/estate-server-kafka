@@ -47,6 +47,7 @@ export class HandleEventUseCase {
           body: content.body,
           entityType: content.entityType,
           entityId: content.entityId,
+          buildingId: content.buildingId,
           eventId: event.eventId,
         }),
       );
@@ -64,6 +65,7 @@ export class HandleEventUseCase {
             body: content.body,
             entityType: content.entityType,
             entityId: content.entityId,
+            buildingId: content.buildingId,
             createdAt: (created.createdAt ?? new Date()).toISOString(),
           },
         });

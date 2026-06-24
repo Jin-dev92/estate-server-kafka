@@ -36,6 +36,7 @@ describe('buildContent', () => {
       body: '엘리베이터 점검',
       entityType: EntityType.Post,
       entityId: 'p1',
+      buildingId: 'b1',
     });
   });
 
@@ -45,7 +46,7 @@ describe('buildContent', () => {
         eventType: EventType.CommentCreated,
         entityType: EntityType.Comment,
         entityId: 'c1',
-        payload: { postId: 'p9' },
+        payload: { postId: 'p9', buildingId: 'b9' },
       }),
     );
 
@@ -53,6 +54,7 @@ describe('buildContent', () => {
       type: NotificationType.CommentAdded,
       entityType: EntityType.Post,
       entityId: 'p9',
+      buildingId: 'b9',
     });
   });
 
@@ -76,6 +78,7 @@ describe('buildContent', () => {
     expect(c?.type).toBe(NotificationType.MessageReceived);
     expect(c?.entityId).toBe('r1');
     expect(c?.body).toHaveLength(50);
+    expect(c?.buildingId).toBeNull();
   });
 
   it('지원하지 않는 이벤트는 null', () => {

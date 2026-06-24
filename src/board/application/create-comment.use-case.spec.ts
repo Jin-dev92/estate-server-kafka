@@ -131,7 +131,10 @@ describe('CreateCommentUseCase', () => {
         entityType: EntityType.Comment,
         entityId: 'c-generated',
         actorId: USER_ID,
-        payload: expect.objectContaining({ postId: POST_ID }) as object,
+        payload: expect.objectContaining({
+          postId: POST_ID,
+          buildingId: BUILDING_ID,
+        }) as object,
       }),
     ]);
     // repo.create가 TX를 받았는지 검증

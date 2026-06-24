@@ -7,6 +7,7 @@ import { NotificationGateway } from './interface/notification.gateway';
 import { ListNotificationsUseCase } from './application/list-notifications.use-case';
 import { GetUnreadCountUseCase } from './application/get-unread-count.use-case';
 import { MarkAllReadUseCase } from './application/mark-all-read.use-case';
+import { MarkOneReadUseCase } from './application/mark-one-read.use-case';
 import { NOTIFICATION_REPOSITORY } from './domain/notification.repository';
 import { NOTIFICATION_COUNTER } from './domain/notification-counter';
 import { NOTIFICATION_RELAY } from './domain/notification-relay';
@@ -32,6 +33,7 @@ import { RedisNotificationRelay } from './infrastructure/redis-notification-rela
     ListNotificationsUseCase,
     GetUnreadCountUseCase,
     MarkAllReadUseCase,
+    MarkOneReadUseCase,
     {
       provide: NOTIFICATION_REPOSITORY,
       useClass: PrismaNotificationRepository,

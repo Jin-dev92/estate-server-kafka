@@ -10,6 +10,7 @@ export interface NotificationPushPayload {
     body: string | null;
     entityType: string;
     entityId: string;
+    buildingId: string | null;
     createdAt: string; // ISO 8601
   };
 }
