@@ -58,7 +58,7 @@ export class CreateCommentUseCase {
           actorId: input.userId,
           entityType: EntityType.Comment,
           entityId: created.id!,
-          payload: { postId: created.postId },
+          payload: { postId: created.postId, buildingId: post.buildingId },
         },
         tx,
       );

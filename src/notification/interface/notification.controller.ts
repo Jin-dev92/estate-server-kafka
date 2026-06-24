@@ -63,6 +63,7 @@ export class NotificationController {
       body: r.body,
       entityType: r.entityType,
       entityId: r.entityId,
+      buildingId: r.buildingId,
       readAt: r.readAt ? r.readAt.toISOString() : null,
       createdAt: (r.createdAt ?? new Date()).toISOString(),
     }));

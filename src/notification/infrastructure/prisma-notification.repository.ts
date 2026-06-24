@@ -14,6 +14,7 @@ type NotificationRow = {
   body: string | null;
   entityType: string;
   entityId: string;
+  buildingId: string | null;
   eventId: string;
   readAt: Date | null;
   createdAt: Date;
@@ -33,6 +34,7 @@ export class PrismaNotificationRepository implements NotificationRepository {
           body: notification.body,
           entityType: notification.entityType,
           entityId: notification.entityId,
+          buildingId: notification.buildingId,
           eventId: notification.eventId,
         },
       });
@@ -82,6 +84,7 @@ export class PrismaNotificationRepository implements NotificationRepository {
       body: row.body,
       entityType: row.entityType as EntityType,
       entityId: row.entityId,
+      buildingId: row.buildingId,
       eventId: row.eventId,
       readAt: row.readAt,
       createdAt: row.createdAt,

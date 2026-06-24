@@ -9,6 +9,7 @@ export interface NotificationProps {
   body: string | null;
   entityType: EntityType;
   entityId: string;
+  buildingId: string | null;
   eventId: string;
   readAt: Date | null;
   createdAt?: Date;
@@ -49,6 +50,9 @@ export class Notification {
   }
   get entityId(): string {
     return this.props.entityId;
+  }
+  get buildingId(): string | null {
+    return this.props.buildingId;
   }
   get eventId(): string {
     return this.props.eventId;

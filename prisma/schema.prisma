@@ -150,6 +150,7 @@ model Notification {
   body        String?
   entityType  String // EntityType 값(Post/Comment/Message)
   entityId    String
+  buildingId  String? // 게시판 딥링크용(Message 알림은 null)
   eventId     String // 원천 도메인 이벤트 id(멱등 키 일부)
   readAt      DateTime?
   createdAt   DateTime  @default(now())

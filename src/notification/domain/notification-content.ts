@@ -10,6 +10,7 @@ export interface NotificationContent {
   body: string | null;
   entityType: EntityType;
   entityId: string;
+  buildingId: string | null;
 }
 
 const BODY_MAX = 50;
@@ -25,26 +26,29 @@ export function buildContent(event: DomainEvent): NotificationContent | null {
         body: p.content.slice(0, BODY_MAX),
         entityType: EntityType.Message,
         entityId: p.roomId,
+        buildingId: null,
       };
     }
     case EventType.CommentCreated: {
-      const p = event.payload as { postId: string };
+      const p = event.payload as { postId: string; buildingId: string };
       return {
         type: NotificationType.CommentAdded,
         title: '새 댓글',
         body: '회원님의 글에 새 댓글이 달렸습니다',
         entityType: EntityType.Post,
         entityId: p.postId,
+        buildingId: p.buildingId,
       };
     }
     case EventType.PostCreated: {
-      const p = event.payload as { title: string };
+      const p = event.payload as { title: string; buildingId: string };
       return {
         type: NotificationType.PostAdded,
         title: '새 게시글',
         body: p.title,
         entityType: EntityType.Post,
         entityId: event.entityId,
+        buildingId: p.buildingId,
       };
     }
     default:
