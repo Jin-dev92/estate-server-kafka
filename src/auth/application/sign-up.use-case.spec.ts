@@ -20,6 +20,12 @@ class FakeUserRepo implements UserRepository {
     this.users.push(saved);
     return Promise.resolve(saved);
   }
+  findById(id: string): Promise<User | null> {
+    return Promise.resolve(this.users.find((u) => u.id === id) ?? null);
+  }
+  update(user: User): Promise<User> {
+    return Promise.resolve(user);
+  }
 }
 const fakeHasher: PasswordHasher = {
   hash: (p) => Promise.resolve(`hashed:${p}`),

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -7,8 +7,16 @@ import {
 } from '@nestjs/swagger';
 import { SignUpUseCase } from '../application/sign-up.use-case';
 import { LoginUseCase } from '../application/login.use-case';
+import { GetProfileUseCase } from '../application/get-profile.use-case';
+import { UpdateProfileUseCase } from '../application/update-profile.use-case';
+import { ChangePasswordUseCase } from '../application/change-password.use-case';
 import { SignUpDto } from './dto/sign-up.dto';
 import { LoginDto } from './dto/login.dto';
+import {
+  UpdateProfileDto,
+  ProfileResponseDto,
+  ChangePasswordDto,
+} from './dto/profile.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { TokenPayload } from '../domain/token-issuer';
@@ -22,6 +30,9 @@ export class AuthController {
   constructor(
     private readonly signUp: SignUpUseCase,
     private readonly login: LoginUseCase,
+    private readonly getProfile: GetProfileUseCase,
+    private readonly updateProfile: UpdateProfileUseCase,
+    private readonly changePassword: ChangePasswordUseCase,
   ) {}
 
   @Post('signup')
@@ -64,5 +75,73 @@ export class AuthController {
   @ApiResponse({ status: 401, type: ErrorResponseDto })
   me(@CurrentUser() user: TokenPayload) {
     return { id: user.sub, email: user.email, role: user.role };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
+  @ApiOperation({ summary: '프로필 조회(DB, name 포함)' })
+  @ApiResponse({ status: 200, type: ProfileResponseDto })
+  @ApiResponse({ status: 401, type: ErrorResponseDto })
+  @ApiResponse({
+    status: 404,
+    type: ErrorResponseDto,
+    description: '사용자를 찾을 수 없음',
+  })
+  async profile(
+    @CurrentUser() user: TokenPayload,
+  ): Promise<ProfileResponseDto> {
+    const u = await this.getProfile.execute(user.sub);
+    return { id: u.id!, email: u.email, name: u.name, role: u.role };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  @RateLimit({ ipMax: 10 })
+  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
+  @ApiOperation({ summary: '프로필(이름) 수정' })
+  @ApiResponse({ status: 200, type: ProfileResponseDto })
+  @ApiResponse({ status: 401, type: ErrorResponseDto })
+  @ApiResponse({
+    status: 404,
+    type: ErrorResponseDto,
+    description: '사용자를 찾을 수 없음',
+  })
+  async editProfile(
+    @CurrentUser() user: TokenPayload,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<ProfileResponseDto> {
+    const u = await this.updateProfile.execute(user.sub, dto.name);
+    return { id: u.id!, email: u.email, name: u.name, role: u.role };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('password')
+  @RateLimit({ ipMax: 10 })
+  @ApiBearerAuth(SWAGGER_BEARER_AUTH)
+  @ApiOperation({ summary: '비밀번호 변경' })
+  @ApiResponse({
+    status: 200,
+    description: '변경 완료',
+    schema: {
+      type: 'object',
+      properties: { ok: { type: 'boolean', example: true } },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    type: ErrorResponseDto,
+    description: '현재 비밀번호 불일치/인증 필요',
+  })
+  async editPassword(
+    @CurrentUser() user: TokenPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ ok: true }> {
+    await this.changePassword.execute(
+      user.sub,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return { ok: true };
   }
 }

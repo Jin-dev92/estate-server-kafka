@@ -16,6 +16,8 @@ const repo: UserRepository = {
   findByEmail: (email) =>
     Promise.resolve(email === 'a@test.com' ? existing : null),
   save: (u) => Promise.resolve(u),
+  findById: () => Promise.resolve(null),
+  update: (u) => Promise.resolve(u),
 };
 const hasher: PasswordHasher = {
   hash: (p) => Promise.resolve(`hashed:${p}`),
