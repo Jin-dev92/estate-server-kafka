@@ -103,10 +103,10 @@
 
 **실행 요약**(자세히는 `load/README.md`):
 ```bash
-docker compose up -d && npm run build
+docker compose up -d && pnpm build
 RATE_LIMIT_USER_MAX=1000000 RATE_LIMIT_IP_MAX=1000000 node dist/main.js   # 부하 측정 시 한도 상향
-npm run load:seed                  # 부하용 시드(OWNER·건물·글)
-PROFILE=load npm run load:read     # load:create / load:login / load:ratelimit
+pnpm load:seed                  # 부하용 시드(OWNER·건물·글)
+PROFILE=load pnpm load:read     # load:create / load:login / load:ratelimit
 ```
 
 ---
@@ -339,33 +339,33 @@ $ git clone --recurse-submodules https://github.com/Jin-dev92/estate-server-kafk
 $ docker compose up -d
 
 # 의존성 설치 + 마이그레이션
-$ npm install
-$ npx prisma migrate deploy
+$ pnpm install
+$ pnpm exec prisma migrate deploy
 
 # main 프로세스 (HTTP API + WebSocket + Kafka producer)
-$ npm run start:dev
+$ pnpm start:dev
 
 # Kafka 컨슈머 워커 3종 — 각각 별도 터미널/프로세스에서 실행(독립 consumer group)
-$ npm run start:worker:persistence    # chat-events → Message 적재
-$ npm run start:worker:notification   # chat+board-events → Notification + WS 푸시
-$ npm run start:worker:audit          # 전체 구독 → AuditLog
+$ pnpm start:worker:persistence    # chat-events → Message 적재
+$ pnpm start:worker:notification   # chat+board-events → Notification + WS 푸시
+$ pnpm start:worker:audit          # 전체 구독 → AuditLog
 
 # Outbox relay 워커 — PENDING OutboxEvent를 폴링해 Kafka로 발행(board·membership 이벤트의 발행 경로)
-$ npm run start:worker:outbox
+$ pnpm start:worker:outbox
 
 # 운영 빌드 후에는 start:prod / start:prod:persistence|notification|audit|outbox 사용
 
 # 테스트
-$ npm run test        # 단위 테스트
-$ npm run test:e2e    # e2e 테스트
-$ npm run test:cov    # 커버리지
+$ pnpm test        # 단위 테스트
+$ pnpm test:e2e    # e2e 테스트
+$ pnpm test:cov    # 커버리지
 
 # 프론트엔드(web/ = estate-web, Next.js) — 백엔드와 별개 프로세스
-$ cd web && npm install && npm run dev   # http://localhost:3000
+$ cd web && pnpm install && pnpm dev   # http://localhost:3000
 
 # 부하테스트 (k6) — load/README.md 참고
-$ npm run load:seed   # 부하용 시드(OWNER·건물·글)
-$ npm run load:read   # GET 목록 / load:create, load:login, load:ratelimit
+$ pnpm load:seed   # 부하용 시드(OWNER·건물·글)
+$ pnpm load:read   # GET 목록 / load:create, load:login, load:ratelimit
 ```
 
 > **M5 이후 프로세스 구성:** main(HTTP+WS+producer) 1개 + 컨슈머 워커 3개. 워커는 같은 코드베이스를 다른 엔트리포인트로 띄운 별도 프로세스이며 각자 독립 consumer group으로 같은 이벤트를 한 번씩 소비합니다. 현재 main에는 비활성 `ChatPersistenceController`(microservice 미연결)가 남아 있으나 영속화는 persistence-worker가 담당합니다(후속 정리 대상).
