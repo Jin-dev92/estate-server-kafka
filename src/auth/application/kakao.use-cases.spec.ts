@@ -119,25 +119,15 @@ describe('KakaoLoginUseCase', () => {
 });
 
 describe('CompleteKakaoSignupUseCase', () => {
-  it('정상: User+Account 생성 후 accessToken', async () => {
-    const savedAccounts: string[] = [];
+  it('정상: User+Account를 saveWithAccount로 함께 생성 후 accessToken', async () => {
+    const linkedProviderIds: string[] = [];
     const accounts: Partial<AccountRepository> = {
       findByProvider: () => Promise.resolve(null),
-      save: (a) => {
-        savedAccounts.push(a.providerId);
-        return Promise.resolve(
-          Account.reconstitute({
-            id: 'a1',
-            userId: 'u1',
-            provider: AuthProvider.KAKAO,
-            providerId: a.providerId,
-          }),
-        );
-      },
     };
     const users: Partial<UserRepository> = {
-      save: (u) =>
-        Promise.resolve(
+      saveWithAccount: (u, link) => {
+        linkedProviderIds.push(link.providerId);
+        return Promise.resolve(
           User.reconstitute({
             id: 'u1',
             email: u.email,
@@ -145,7 +135,8 @@ describe('CompleteKakaoSignupUseCase', () => {
             passwordHash: null,
             role: u.role,
           }),
-        ),
+        );
+      },
     };
     const uc = new CompleteKakaoSignupUseCase(
       onboarding,
@@ -158,7 +149,7 @@ describe('CompleteKakaoSignupUseCase', () => {
       role: Role.OWNER,
     });
     expect(r).toEqual({ accessToken: 'ACCESS' });
-    expect(savedAccounts).toEqual(['k1']);
+    expect(linkedProviderIds).toEqual(['k1']);
   });
 
   it('잘못된 role이면 INVALID_ROLE', async () => {
@@ -189,7 +180,7 @@ describe('CompleteKakaoSignupUseCase', () => {
     ).rejects.toMatchObject({ code: 'AUTH_INVALID_ONBOARDING' });
   });
 
-  it('이미 Account 있으면 users.save 없이 accessToken 반환(멱등)', async () => {
+  it('이미 Account 있으면 saveWithAccount 없이 accessToken 반환(멱등)', async () => {
     let saveCalled = false;
     const accounts: Partial<AccountRepository> = {
       findByProvider: () =>
@@ -213,7 +204,7 @@ describe('CompleteKakaoSignupUseCase', () => {
             role: Role.TENANT,
           }),
         ),
-      save: () => {
+      saveWithAccount: () => {
         saveCalled = true;
         return Promise.resolve({} as User);
       },
@@ -232,12 +223,12 @@ describe('CompleteKakaoSignupUseCase', () => {
     expect(saveCalled).toBe(false);
   });
 
-  it('users.save P2002 이면 EMAIL_IN_USE', async () => {
+  it('saveWithAccount P2002 이면 EMAIL_IN_USE', async () => {
     const accounts: Partial<AccountRepository> = {
       findByProvider: () => Promise.resolve(null),
     };
     const users: Partial<UserRepository> = {
-      save: () =>
+      saveWithAccount: () =>
         Promise.reject(
           new Prisma.PrismaClientKnownRequestError('dup', {
             code: 'P2002',

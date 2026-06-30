@@ -4,7 +4,6 @@ import { AppException } from '../../common/errors/app-exception';
 import { AuthError } from '../auth.errors';
 import { Role } from '../domain/role.enum';
 import { AuthProvider } from '../domain/auth-provider';
-import { Account } from '../domain/account.entity';
 import { User } from '../domain/user.entity';
 import {
   ACCOUNT_REPOSITORY,
@@ -63,12 +62,14 @@ export class CompleteKakaoSignupUseCase {
 
     let user: User;
     try {
-      user = await this.users.save(
+      // User+Account를 nested write로 원자 생성(account 실패 시 user도 롤백 → 고아 방지).
+      user = await this.users.saveWithAccount(
         User.createOAuth({
           email: payload.email,
           name: payload.name,
           role: input.role,
         }),
+        { provider: AuthProvider.KAKAO, providerId: payload.providerId },
       );
     } catch (e) {
       if (
@@ -79,13 +80,6 @@ export class CompleteKakaoSignupUseCase {
       }
       throw e;
     }
-    await this.accounts.save(
-      Account.create({
-        userId: user.id!,
-        provider: AuthProvider.KAKAO,
-        providerId: payload.providerId,
-      }),
-    );
     return {
       accessToken: await this.tokenIssuer.issue({
         sub: user.id!,
