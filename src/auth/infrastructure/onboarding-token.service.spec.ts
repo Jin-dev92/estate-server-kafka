@@ -17,6 +17,6 @@ describe('OnboardingTokenService', () => {
 
   it('일반 access token(typ 없음)은 verify에서 거부', async () => {
     const wrong = await jwt.signAsync({ sub: 'u1', email: 'a@b.com' });
-    await expect(svc.verify(wrong)).rejects.toBeDefined();
+    await expect(svc.verify(wrong)).rejects.toThrow('onboarding 토큰이 아님');
   });
 });
